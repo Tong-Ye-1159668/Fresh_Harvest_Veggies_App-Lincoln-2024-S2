@@ -10,6 +10,10 @@ class Customer(Person):
     __custBalance = Column(Integer, default=0)
     __maxOwing = Column(Integer, default=100)
 
+    __mapper_args__ = {
+    'polymorphic_identity': 'Customer'
+    }
+
     def __init__(self, firstName, lastName, username, password, custAddress, custBalance=0, maxOwing=100):
         super().__init__(firstName, lastName, username, password)
         self.__custAddress = custAddress
