@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from sqlalchemy import Column, Integer, String, Float
+from sqlalchemy import Column, Integer, String, Float, Date
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
@@ -10,7 +10,7 @@ class Payment(Base, ABC):
 
     __paymentID = Column(Integer, primary_key=True, autoincrement=True)
     __paymentAmount = Column(Float)
-    __paymentDate = Column(String(50))
+    __paymentDate = Column(Date)
     type = Column(String(50))
 
     __mapper_args__ = {
@@ -39,4 +39,4 @@ class Payment(Base, ABC):
 
     @paymentDate.setter
     def paymentDate(self, value):
-        return self.__paymentDate
+        self.__paymentDate = value
