@@ -117,4 +117,3 @@ class Person(Base, ABC):
             raise ValueError("Password must be between 6 and 50 characters")
 
         self.__password = value
-
