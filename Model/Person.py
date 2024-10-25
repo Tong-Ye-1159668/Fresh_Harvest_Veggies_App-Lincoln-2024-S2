@@ -1,6 +1,9 @@
 from abc import ABC, abstractmethod
 
 from sqlalchemy import Column, Integer, String
+from sqlalchemy.ext.declarative import declarative_base
+
+Base = declarative_base()
 
 class Person(Base, ABC):
     __tablename__ = 'persons'
@@ -10,6 +13,12 @@ class Person(Base, ABC):
     __lastName = Column(String(50))
     __username = Column(String(50), unique = True)
     __password = Column(String(50))
+    type = Column(String(50))
+
+    __mapper_args__ = {
+        'polymorphic_identity': 'Person', # Use 'type' column to distinguish subclasses
+        'polymorphic_on': type
+    }
 
     def __init__(self, firstName, lastName, username, password):
         self.__firstName = firstName
