@@ -8,7 +8,7 @@ class CorporateCustomer(Customer):
     __discountRate = Column(Float, default = 0.10) # Default 10% discount
     __maxCredit = Column(Float)
     __minBalance = Column(Float)
-    
+
     __mapper_args__ = {
         'polymorphic_identity': 'Corporate Customer'
     }
