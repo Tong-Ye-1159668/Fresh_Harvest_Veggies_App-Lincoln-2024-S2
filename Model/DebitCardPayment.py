@@ -1,11 +1,11 @@
-from sqlalchemy import Column, Integer, String, Float
+from sqlalchemy import Column, Integer, String, Float, ForeignKey
 
 from Payment import Payment
 
 class DebitCardPayment(Payment):
     __tablename__ = 'debit_card_payments'
 
-    __paymentID = Column(Integer, primary_key=True, autoincrement=True)
+    __paymentID = Column(Integer, ForeignKey('payments.paymentID'), primary_key = True)
     __bankName = Column(String(20))
     __debitCardNumber = Column(String(20))
 
@@ -59,3 +59,5 @@ class DebitCardPayment(Payment):
         # Check if the length is between 1 and 20 characters
         if len(value) > 20:
             raise ValueError("Debit card number must be between 1 and 20 characters")
+
+        self.__debitCardNumber = value
