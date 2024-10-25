@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
 
-from IPython.utils.coloransi import value
 from sqlalchemy import Column, Integer, String
 
 class Person(Base, ABC):
     __tablename__ = 'persons'
 
+    __personID = Column(Integer, primary_key = True, autoincrement = True)
     __firstName = Column(String(50))
     __lastName = Column(String(50))
     __username = Column(String(50), unique = True)
@@ -18,7 +18,7 @@ class Person(Base, ABC):
         self.__password = password
 
     # Abstract method to enforce implementation in subclass
-    def getUserRole(self):
+    def getPersonRole(self):
         pass
 
     # Getter and setter for firstname
