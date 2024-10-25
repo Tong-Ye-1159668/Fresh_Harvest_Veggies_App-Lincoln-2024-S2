@@ -8,10 +8,14 @@ class CorporateCustomer(Customer):
     __discountRate = Column(Float, default = 0.10) # Default 10% discount
     __maxCredit = Column(Float)
     __minBalance = Column(Float)
+    
+    __mapper_args__ = {
+        'polymorphic_identity': 'Corporate Customer'
+    }
 
     def __init__(self, firstName, lastName, username, password, custAddress, custBalance=0,
                  discountRate=0.10, maxCredit, minBalance):
-        super.__init__(firstName, lastName, username, password, custAddress, custBalance)
+        super().__init__(firstName, lastName, username, password, custAddress, custBalance)
         self.__discountRate = discountRate
         self.__maxCredit = maxCredit
         self.__minBalance = minBalance
