@@ -1,11 +1,9 @@
-from abc import ABC, abstractmethod
-
 from sqlalchemy import Column, Integer, String, Float, Date
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
 
-class Payment(Base, ABC):
+class Payment(Base):
     __tablename__ = 'payments'
 
     __paymentID = Column(Integer, primary_key=True, autoincrement=True)

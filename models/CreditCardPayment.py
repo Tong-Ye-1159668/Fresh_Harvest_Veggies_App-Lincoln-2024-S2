@@ -71,4 +71,4 @@ class CreditCardPayment(Payment):
         if len(value) > 20:
             raise ValueError("Card type must be between 1 and 20 characters")
 
-        self.__ardType = value
+        self.__cardType = value
