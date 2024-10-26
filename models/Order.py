@@ -10,8 +10,8 @@ class Order(Base):
     id = Column(Integer, primary_key=True)
     orderCustomer = Column(Integer, ForeignKey('customers.id'))
     orderDate = Column(Date)
-    orderNumber = Column(String, unique=True)  # Unique order/tracking number for shipment or pick-up
-    orderStatus = Column(String)
+    orderNumber = Column(String(20), unique=True)  # Unique order/tracking number for shipment or pick-up
+    orderStatus = Column(String(20))
 
     # Relationship to Customer
     customer = relationship("Customer", back_populates="orders")
