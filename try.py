@@ -1,9 +1,9 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-
-from models.CorporateCustomer import CorporateCustomer
 from models.base import Base
+from models.CorporateCustomer import CorporateCustomer
 from models.Customer import Customer
+
 
 
 # Database configuration
