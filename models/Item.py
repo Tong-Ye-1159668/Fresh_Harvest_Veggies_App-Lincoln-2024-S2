@@ -1,15 +1,15 @@
 from sqlalchemy import Column, Integer, String
-from sqlalchemy.ext.declarative import declarative_base
+from .base import Base
 
-Base = declarative_base()
 
 class Item(Base):
     __tablename__ = 'items'
 
-    __itemID = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     type = Column(String(50))
 
+    # This dictionary tells SQLAlchemy to use 'type' to differentiate subclasses
     __mapper_args__ = {
-        'polymorphic_identity': 'Item', # Use 'type' column to distinguish subclasses
-        'polymorphic_on': type
+        'polymorphic_identity': 'Item', # The base identity for this class
+        'polymorphic_on': type          # SQLAlchemy uses 'type' to distinguish subclasses
     }
