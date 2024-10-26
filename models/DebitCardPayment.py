@@ -1,63 +1,18 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey
-
-from Payment import Payment
+from sqlalchemy import Column, Integer, String, ForeignKey
+from .Payment import Payment
 
 class DebitCardPayment(Payment):
     __tablename__ = 'debit_card_payments'
 
-    __paymentID = Column(Integer, ForeignKey('payments.paymentID'), primary_key = True)
-    __bankName = Column(String(20))
-    __debitCardNumber = Column(String(20))
+    id = Column(Integer, ForeignKey('payments.id'), primary_key = True)
+    bankName = Column(String(20))
+    debitCardNumber = Column(String(30))
 
     __mapper_args__ = {
-        'polymorphic_identity': 'DebitCardPayment'
+        'polymorphic_identity': 'DebitCardPayment'  # Unique identifier for polymorphism
     }
 
     def __init__(self, paymentAmount, paymentDate, bankName, debitCardNumber):
-        super().__init__(paymentAmount, paymentDate)
-        self.__bankName = bankName
-        self.__debitCardNumber = debitCardNumber
-
-    # Getter and setter for bankName
-    @property
-    def bankName(self):
-        return self.__bankName
-
-    @bankName.setter
-    def bankName(self, value):
-        # Check if value is a string
-        if not isinstance(value, str):
-            raise ValueError("Bank name must be a string")
-
-        # Strip whitespace and check if it's not empty
-        value = value.strip()
-        if not value:
-            raise ValueError("Bank name cannot be empty")
-
-        # Check if the length is between 1 and 20 characters
-        if len(value) > 20:
-            raise ValueError("Bank name must be between 1 and 20 characters")
-
-        self.__bankName = value
-
-    # Getter and setter for debitCardNumber
-    @property
-    def debitCardNumber(self):
-        return self.__debitCardNumber
-
-    @debitCardNumber.setter
-    def debitCardNumber(self, value):
-        # Check if value is a string
-        if not isinstance(value, str):
-            raise ValueError("Debit card number must be a string")
-
-        # Strip whitespace and check if it's not empty
-        value = value.strip()
-        if not value:
-            raise ValueError("Debit card number cannot be empty")
-
-        # Check if the length is between 1 and 20 characters
-        if len(value) > 20:
-            raise ValueError("Debit card number must be between 1 and 20 characters")
-
-        self.__debitCardNumber = value
+        super().__init__(paymentAmount=paymentAmount, paymentDate=paymentDate)
+        self.bankName = bankName
+        self.debitCardNumber = debitCardNumber
