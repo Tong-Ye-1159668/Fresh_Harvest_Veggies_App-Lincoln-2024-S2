@@ -10,12 +10,11 @@ class Customer(Person):
     maxOwing = Column(Integer, default=100)
 
     __mapper_args__ = {
-        'polymorphic_identity': 'customer'
+        'polymorphic_identity': 'customer'  # Unique identifier for polymorphism
     }
 
     def __init__(self, firstName, lastName, username, password, custAddress, custBalance=0, maxOwing=100):
         super().__init__(firstName=firstName, lastName=lastName, username=username, password=password)
-        self.type = 'customer'
         self.custAddress = custAddress
         self.custBalance = custBalance
         self.maxOwing = maxOwing
