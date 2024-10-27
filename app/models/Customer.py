@@ -1,23 +1,27 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from app import db
 from .Person import Person
+
 
 class Customer(Person):
     __tablename__ = 'customers'
 
-    id = Column(Integer, ForeignKey('persons.id'), primary_key=True)
-    custAddress = Column(String(255))
-    custBalance = Column(Integer, default=0)
-    maxOwing = Column(Integer, default=100)
+    id = db.Column(db.Integer, db.ForeignKey('persons.id'), primary_key=True)
+    custAddress = db.Column(db.String(255))
+    custBalance = db.Column(db.Integer, default=0)
+    maxOwing = db.Column(db.Integer, default=100)
 
     __mapper_args__ = {
         'polymorphic_identity': 'customer'  # Unique identifier for polymorphism
     }
+
+    # Relationship to Order
+    orders = db.relationship("Order", back_populates="customer")
+
+    # Relationship to Payment
+    payments = db.relationship("Payment", back_populates="customer")
 
     def __init__(self, firstName, lastName, username, password, custAddress, custBalance=0, maxOwing=100):
         super().__init__(firstName=firstName, lastName=lastName, username=username, password=password)
         self.custAddress = custAddress
         self.custBalance = custBalance
         self.maxOwing = maxOwing
-
-    def __repr__(self):
-        return f"Customer({self.firstName} {self.lastName}, Address: {self.custAddress}, Balance: {self.custBalance})"

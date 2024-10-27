@@ -1,12 +1,13 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from app import db  # Import the `db` instance from your Flask app
 from .Payment import Payment
+
 
 class DebitCardPayment(Payment):
     __tablename__ = 'debit_card_payments'
 
-    id = Column(Integer, ForeignKey('payments.id'), primary_key = True)
-    bankName = Column(String(20))
-    debitCardNumber = Column(String(30))
+    id = db.Column(db.Integer, db.ForeignKey('payments.id'), primary_key=True)
+    bankName = db.Column(db.String(20))
+    debitCardNumber = db.Column(db.String(30))
 
     __mapper_args__ = {
         'polymorphic_identity': 'DebitCardPayment'  # Unique identifier for polymorphism

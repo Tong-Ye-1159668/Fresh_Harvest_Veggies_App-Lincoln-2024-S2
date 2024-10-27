@@ -1,12 +1,13 @@
-from sqlalchemy import Column, Integer, Float, ForeignKey
+from app import db
 from .Veggie import Veggie
+
 
 class WeightedVeggie(Veggie):
     __tablename__ = 'weighted_veggies'
 
-    id = Column(Integer, ForeignKey('veggies.id'), primary_key=True)
-    weight = Column(Float, nullable=False)
-    pricePerKilo = Column(Float, nullable=False)
+    id = db.Column(db.Integer, db.ForeignKey('veggies.id'), primary_key=True)
+    weight = db.Column(db.Float, nullable=False)
+    pricePerKilo = db.Column(db.Float, nullable=False)
 
     __mapper_args__ = {
         'polymorphic_identity': 'WeightedVeggie'  # Unique identifier for polymorphism

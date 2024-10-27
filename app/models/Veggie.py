@@ -1,13 +1,12 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
-from sqlalchemy.orm import relationship
-
+from app import db
 from .Item import Item
+
 
 class Veggie(Item):
     __tablename__ = 'veggies'
 
-    id = Column(Integer, ForeignKey('items.id'), primary_key=True)
-    vegName = Column(String(20))
+    id = db.Column(db.Integer, db.ForeignKey('items.id'), primary_key=True)
+    vegName = db.Column(db.String(20))
 
     __mapper_args__ = {
         'polymorphic_identity': 'Veggie'  # Unique identifier for polymorphism

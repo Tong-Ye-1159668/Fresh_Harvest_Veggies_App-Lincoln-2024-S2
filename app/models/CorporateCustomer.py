@@ -1,13 +1,13 @@
-from sqlalchemy import Column, Integer, Float, ForeignKey
+from app import db
 from .Customer import Customer
 
 class CorporateCustomer(Customer):
     __tablename__ = 'corporate_customers'
 
-    id = Column(Integer, ForeignKey('customers.id'), primary_key = True)
-    discountRate = Column(Float, default = 0.10) # Default 10% discount
-    maxCredit = Column(Float)
-    minBalance = Column(Float)
+    id = db.Column(db.Integer, db.ForeignKey('customers.id'), primary_key=True)
+    discountRate = db.Column(db.Float, default=0.10)  # Default 10% discount
+    maxCredit = db.Column(db.Float)
+    minBalance = db.Column(db.Float)
 
     __mapper_args__ = {
         'polymorphic_identity': 'Corporate Customer'
