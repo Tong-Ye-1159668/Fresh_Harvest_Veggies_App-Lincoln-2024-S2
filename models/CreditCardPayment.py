@@ -1,14 +1,13 @@
-from app import db
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Date
 from .Payment import Payment
-
 
 class CreditCardPayment(Payment):
     __tablename__ = 'credit_card_payments'
 
-    id = db.Column(db.Integer, db.ForeignKey('payments.id'), primary_key=True)
-    cardExpiryDate = db.Column(db.Date)
-    cardNumber = db.Column(db.String(30))
-    cardType = db.Column(db.String(20))
+    id = Column(Integer, ForeignKey('payments.id'), primary_key = True)
+    cardExpiryDate = Column(Date)
+    cardNumber = Column(String(30))
+    cardType = Column(String(20))
 
     __mapper_args__ = {
         'polymorphic_identity': 'CreditCardPayment'  # Unique identifier for polymorphism
