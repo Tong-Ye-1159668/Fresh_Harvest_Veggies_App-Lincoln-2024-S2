@@ -1,3 +1,4 @@
+from models import PremadeBox
 from models.Customer import Customer
 from models.CorporateCustomer import CorporateCustomer
 from models.Staff import Staff
@@ -103,11 +104,26 @@ def getWeightedVeggieList():
                 name, weight, price = line.strip().split(',')
                 veggie = WeightedVeggie(
                     vegName=name.strip(),
-                    weight=float(weight) / 1000,  # Convert grams to kilos
+                    weight=float(weight),
                     pricePerKilo=float(price)
                 )
                 weightedList.append(veggie)
     return weightedList
+
+def getPremadeBoxList():
+    """Read the premadeBoxData.txt file and return a list of PremadeBox objects."""
+    premadeList = []
+    with open("data/premadeBoxData.txt", "r") as premadebFile:
+        for line in premadebFile:
+            if line.strip():
+                name, size, numbOfBoxes = line.strip().split(',')
+                box = PremadeBox(
+                    boxName=name.strip(),
+                    boxSize=int(size),
+                    numbOfBoxes=int(numbOfBoxes)
+                )
+                premadeList.append(box)
+    return premadeList
 
 
 def importAllData(session):
