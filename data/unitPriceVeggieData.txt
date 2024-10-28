@@ -1,0 +1,5 @@
+Capsicum,1000,1.00
+Brocoli,1400,2.40
+Cauliflower,900,3.50
+Cabbage,2000,4.20
+Lettuce,1800,3.80

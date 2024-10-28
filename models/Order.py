@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, Date, ForeignKey, Float, Boolean
 from sqlalchemy.orm import relationship
 from enum import Enum
 from datetime import datetime
+
 from .base import Base
 
 class OrderStatus(Enum):
@@ -34,14 +35,14 @@ class Order(Base):
 
     # Relationships
     customer = relationship("Customer", back_populates="orders")
-    orderLines = relationship("OrderLine", back_populates="order", cascade="all, delete-orphan")
+    orderLines = relationship("OrderLine", back_populates="order")
     payments = relationship("Payment", back_populates="order")
 
     def __init__(self, orderCustomer, orderNumber, deliveryMethod = DeliveryMethod.PICKUP):
         self.orderCustomer = orderCustomer
         self.orderDate = datetime.now().date()
         self.orderNumber = orderNumber
-        self.orderStatus = OrderStatus.PENDING
+        self.orderStatus = OrderStatus.PENDING.value
         self.deliveryMethod = deliveryMethod
 
     def calcTotalPrice(self):
@@ -82,3 +83,38 @@ class Order(Base):
         if self.deliveryMethod == DeliveryMethod.DELIVERY:
             return self.deliveryDistance <= 20  # 20km radius limit
         return True
+
+    def validateOrder(self):
+        """Validate if order can be placed"""
+        if not self.customer:
+            return False, "Customer not found"
+
+        if isinstance(self.customer, 'CorporateCustomer'):
+            if self.customer.custBalance < self.customer.minBalance:
+                return False, "Balance below minimum allowed"
+        else:
+            if self.customer.custBalance + self.calcTotalPrice() > self.customer.maxOwing:
+                return False, "Order exceeds maximum owing limit"
+
+        if self.deliveryMethod == DeliveryMethod.DELIVERY and not self.validateDelivery():
+            return False, "Delivery distance exceeds 20km limit"
+
+        return True, "Order validated successfully"
+
+    def addOrderLine(self, item, itemNumber):
+        """Add a new order line"""
+        newLine = OrderLine(itemNumber=itemNumber, lineTotal=0)
+        newLine.item = item
+        newLine.lineTotal = newLine.calcLineTotal()
+        self.orderLines.append(newLine)
+        self.calcTotalPrice()
+        return newLine
+
+    def getOrderStatus(self):
+        """Get formatted order status"""
+        return self.orderStatus.value if isinstance(self.orderStatus, OrderStatus) else self.orderStatus
+
+    def calcRemainingBalance(self):
+        """Calculate remaining balance to be paid"""
+        paidAmount = sum(payment.paymentAmount for payment in self.payments)
+        return self.total - paidAmount

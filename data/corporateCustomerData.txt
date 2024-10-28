@@ -1,0 +1,3 @@
+Mason,Rivera,cusername1,userpass,1 Seylyn Street, Sewlyn
+Emily,Bailey,cusername2,userpass,2 Seylyn Street, Sewlyn
+David,Murphy,cusername3,userpass,3 Seylyn Street, Sewlyn

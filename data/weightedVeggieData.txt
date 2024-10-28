@@ -1,0 +1,5 @@
+Brown Onion,2000,1.50
+Tomato,1800,7.99
+Beetroot,900,3.90
+Red Yam,700,7.00
+Shallot,1200,11.00

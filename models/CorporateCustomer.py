@@ -6,8 +6,8 @@ class CorporateCustomer(Customer):
 
     id = Column(Integer, ForeignKey('customers.id'), primary_key = True)
     discountRate = Column(Float, default = 0.10) # Default 10% discount
-    maxCredit = Column(Float)
-    minBalance = Column(Float)
+    maxCredit = Column(Float, default = 200)
+    minBalance = Column(Float, default = 10)
 
     __mapper_args__ = {
         'polymorphic_identity': 'Corporate Customer'

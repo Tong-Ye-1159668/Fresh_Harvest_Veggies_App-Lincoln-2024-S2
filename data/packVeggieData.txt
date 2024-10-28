@@ -1,0 +1,5 @@
+Carrot,500,4.00
+Potato,800,8.00
+Spinach,400,5.00
+Muchroom,600,4.50
+Garlic,800,4.30

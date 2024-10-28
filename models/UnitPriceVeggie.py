@@ -6,14 +6,14 @@ class UnitPriceVeggie(Veggie):
     __tablename__ = 'unit_price_veggies'
 
     id = Column(Integer, ForeignKey('veggies.id'), primary_key = True)
-    pricePerUnit = Column(Float)
     quantity = Column(Integer)
+    pricePerUnit = Column(Float)
 
     __mapper_args__ = {
         'polymorphic_identity': 'UnitPriceVeggie' # Unique identifier for SQLAlchemy polymorphism
     }
 
-    def __init__(self, vegName, pricePerUnit, quantity):
+    def __init__(self, vegName, quantity, pricePerUnit):
         super().__init__(vegName=vegName)
-        self.pricePerUnit = pricePerUnit
         self.quantity = quantity
+        self.pricePerUnit = pricePerUnit

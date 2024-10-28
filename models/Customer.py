@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy.orm import relationship
 from .Person import Person
 
 class Customer(Person):
@@ -12,6 +13,9 @@ class Customer(Person):
     __mapper_args__ = {
         'polymorphic_identity': 'customer'  # Unique identifier for polymorphism
     }
+
+    # Relationships
+    orders = relationship("Order", back_populates="customer")
 
     def __init__(self, firstName, lastName, username, password, custAddress, custBalance=0, maxOwing=100):
         super().__init__(firstName=firstName, lastName=lastName, username=username, password=password)
