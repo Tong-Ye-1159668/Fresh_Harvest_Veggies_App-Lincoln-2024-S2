@@ -5,6 +5,7 @@ from datetime import datetime
 
 from models import PremadeBox, UnitPriceVeggie, PackVeggie, WeightedVeggie, Item, Order
 from models.Order import DeliveryMethod, Order,OrderStatus
+from views.box_customise_dialog import CustomBoxDialog
 
 
 class CustomerOrderTab(ttk.Frame):
@@ -13,16 +14,45 @@ class CustomerOrderTab(ttk.Frame):
         self.engine = engine
         self.customer = customer
 
-        # Create two frames
-        leftFrame = ttk.Frame(self)
-        leftFrame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+        # Create main container with 3 columns
+        mainContainer = ttk.Frame(self)
+        mainContainer.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
-        rightFrame = ttk.Frame(self)
-        rightFrame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+        # Left frame - Available Items (1/3 of width)
+        leftFrame = ttk.LabelFrame(mainContainer, text="Available Items")
+        leftFrame.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
 
-        # Left frame - Available Items
-        ttk.Label(leftFrame, text="Available Items", font=('Helvetica', 12, 'bold')).pack()
+        # Center frame - Shopping Cart (1/3 of width)
+        centerFrame = ttk.LabelFrame(mainContainer, text="Shopping Cart")
+        centerFrame.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
 
+        # Right Frame Content - Order Summary
+        rightFrame = ttk.LabelFrame(mainContainer, text="Order Summary")
+        rightFrame.grid(row=0, column=2, sticky="nsew", padx=5, pady=5)
+
+        # Cart Total Display
+        cartTotalFrame = ttk.LabelFrame(rightFrame, text="Cart Total")
+        cartTotalFrame.pack(fill=tk.X, pady=5, padx=5)
+
+        # Show detailed price breakdown
+        self.itemsTotalLabel = ttk.Label(cartTotalFrame, text="Items Total: $0.00", font=('Helvetica', 10))
+        self.itemsTotalLabel.pack(pady=2)
+
+        self.deliveryFeeLabel = ttk.Label(cartTotalFrame, text="Delivery Fee: $0.00", font=('Helvetica', 10))
+        self.deliveryFeeLabel.pack(pady=2)
+
+        ttk.Separator(cartTotalFrame, orient='horizontal').pack(fill=tk.X, pady=5)
+
+        self.totalLabel = ttk.Label(cartTotalFrame, text="Total: $0.00", font=('Helvetica', 12, 'bold'))
+        self.totalLabel.pack(pady=2)
+
+        # Configure grid weights
+        mainContainer.grid_columnconfigure(0, weight=1)
+        mainContainer.grid_columnconfigure(1, weight=1)
+        mainContainer.grid_columnconfigure(2, weight=1)
+        mainContainer.grid_rowconfigure(0, weight=1)
+
+        # Left Frame Content - Available Items
         # Create Treeview for items
         self.itemTree = ttk.Treeview(leftFrame, columns=('Name', 'Type', 'Price', 'Stock'), show='headings')
         self.itemTree.heading('Name', text='Name')
@@ -39,25 +69,21 @@ class CustomerOrderTab(ttk.Frame):
         ttk.Spinbox(quantityFrame, from_=1, to=100, textvariable=self.quantity).pack(side=tk.LEFT, padx=5)
         ttk.Button(quantityFrame, text="Add to Cart", command=self.addToCart).pack(side=tk.LEFT)
 
-        # Right frame - Shopping Cart
-        ttk.Label(rightFrame, text="Shopping Cart", font=('Helvetica', 12, 'bold')).pack()
-
-        # Create Treeview for cart
-        self.cartTree = ttk.Treeview(rightFrame, columns=('Name', 'Quantity', 'Price'), show='headings')
+        # Center Frame Content - Cart Items
+        self.cartTree = ttk.Treeview(centerFrame, columns=('Name', 'Quantity', 'Price'), show='headings')
         self.cartTree.heading('Name', text='Name')
         self.cartTree.heading('Quantity', text='Quantity')
         self.cartTree.heading('Price', text='Price')
         self.cartTree.pack(fill=tk.BOTH, expand=True, pady=5)
 
-        # Order summary
-        summaryFrame = ttk.LabelFrame(rightFrame, text="Order Summary")
-        summaryFrame.pack(fill=tk.X, pady=5)
+        # Add Remove button under cart
+        ttk.Button(centerFrame, text="Remove Selected",
+                   command=self.removeFromCart).pack(pady=5)
 
-        # Delivery options with distance input
-        deliveryFrame = ttk.LabelFrame(summaryFrame, text="Delivery Options")
-        deliveryFrame.pack(fill=tk.X, pady=5)
+        # Delivery Options
+        deliveryFrame = ttk.LabelFrame(rightFrame, text="Delivery Options")
+        deliveryFrame.pack(fill=tk.X, pady=5, padx=5)
 
-        # Delivery method radio buttons
         self.deliveryMethod = tk.StringVar(value="PICKUP")
         ttk.Radiobutton(deliveryFrame, text="Pickup",
                         variable=self.deliveryMethod,
@@ -72,12 +98,10 @@ class CustomerOrderTab(ttk.Frame):
         self.deliveryDetailsFrame = ttk.Frame(deliveryFrame)
         self.deliveryDetailsFrame.pack(fill=tk.X, padx=5, pady=5)
 
-        # Address input
         ttk.Label(self.deliveryDetailsFrame, text="Delivery Address:").pack()
         self.address = tk.StringVar()
         ttk.Entry(self.deliveryDetailsFrame, textvariable=self.address, width=40).pack(pady=2)
 
-        # Distance input
         ttk.Label(self.deliveryDetailsFrame, text="Distance (km):").pack()
         self.distance = tk.StringVar()
         ttk.Entry(self.deliveryDetailsFrame, textvariable=self.distance, width=10).pack(pady=2)
@@ -87,12 +111,23 @@ class CustomerOrderTab(ttk.Frame):
         # Initially hide delivery details
         self.deliveryDetailsFrame.pack_forget()
 
-        # Total
-        self.totalLabel = ttk.Label(summaryFrame, text="Total: $0.00")
-        self.totalLabel.pack(pady=5)
+        # Add space before buttons
+        ttk.Separator(rightFrame, orient='horizontal').pack(fill=tk.X, pady=10)
 
-        # Checkout button
-        ttk.Button(rightFrame, text="Proceed to Checkout", command=self.checkout).pack(pady=5)
+        # Action Buttons Frame
+        buttonFrame = ttk.Frame(rightFrame)
+        buttonFrame.pack(fill=tk.X, pady=10, padx=5)
+
+        # Clear Cart button (left-aligned)
+        ttk.Button(buttonFrame, text="Clear Cart",
+                   command=self.clearCart,
+                   style='Secondary.TButton').pack(side=tk.LEFT, padx=5)
+
+        # Submit Order button (right-aligned)
+        submitBtn = ttk.Button(buttonFrame, text="Submit Order",
+                               command=self.submitOrder,
+                               style='Primary.TButton')
+        submitBtn.pack(side=tk.RIGHT, padx=5)
 
         # Load initial data
         self.loadItems()
@@ -106,17 +141,60 @@ class CustomerOrderTab(ttk.Frame):
 
             for item in items:
                 if isinstance(item, WeightedVeggie):
-                    self.itemTree.insert('', 'end', values=(item.vegName, 'Weight',
-                                                            f"${item.pricePerKilo}/kg", f"{item.weight}kg"))
+                    # Show price per kg for weighted items
+                    self.itemTree.insert('', 'end', values=(
+                        item.vegName,
+                        'Weight',
+                        f"${item.pricePerKilo}/kg",
+                        f"{item.weight}kg"
+                    ))
                 elif isinstance(item, PackVeggie):
-                    self.itemTree.insert('', 'end', values=(item.vegName, 'Pack',
-                                                            f"${item.pricePerPack}/pack", item.numberOfPacks))
+                    # Show price per pack
+                    self.itemTree.insert('', 'end', values=(
+                        item.vegName,
+                        'Pack',
+                        f"${item.pricePerPack}/pack",
+                        item.numberOfPacks
+                    ))
                 elif isinstance(item, UnitPriceVeggie):
-                    self.itemTree.insert('', 'end', values=(item.vegName, 'Unit',
-                                                            f"${item.pricePerUnit}/unit", item.quantity))
+                    # Show price per unit
+                    self.itemTree.insert('', 'end', values=(
+                        item.vegName,
+                        'Unit',
+                        f"${item.pricePerUnit}/unit",
+                        item.quantity
+                    ))
                 elif isinstance(item, PremadeBox):
-                    self.itemTree.insert('', 'end', values=(f"Premade Box {item.boxSize}", 'Box',
-                                                            self.getBoxPrice(item.boxSize), item.numbOfBoxes))
+                    # Show simple price for box (no unit needed)
+                    price = PremadeBox.getBoxPrice(item.boxSize)
+                    self.itemTree.insert('', 'end', values=(
+                        f"Premade Box {item.boxSize}",
+                        'Box',
+                        price,  # Already includes $ sign
+                        item.numbOfBoxes
+                    ))
+
+    def handleCustomBox(self, item_data):
+        """Handle customization of premade box"""
+        box_size = item_data[0].split()[-1]  # Get size from "Premade Box S/M/L"
+
+        dialog = CustomBoxDialog(self, self.engine, box_size)
+        self.wait_window(dialog)
+
+        if dialog.result:
+            # Add box to cart with selected veggies
+            quantity = self.quantity.get()
+            price = float(PremadeBox.getBoxPrice(box_size).replace('$', ''))
+            total_price = price * quantity
+
+            # Create cart entry with veggie list
+            veggie_list = ", ".join(dialog.result)
+            self.cartTree.insert('', 'end', values=(
+                f"{item_data[0]} ({veggie_list})",
+                quantity,
+                f"${total_price:.2f}"
+            ))
+            self.updateTotal()
 
     def addToCart(self):
         """Add selected item to cart"""
@@ -128,10 +206,170 @@ class CustomerOrderTab(ttk.Frame):
         item_data = self.itemTree.item(selected[0])['values']
         quantity = self.quantity.get()
 
-        # Add to cart tree
-        self.cartTree.insert('', 'end', values=(item_data[0], quantity,
-                                                f"${float(item_data[2].replace('$', '')) * quantity:.2f}"))
+        # Check if it's a premade box
+        if "Premade Box" in item_data[0]:
+            self.handleCustomBox(item_data)
+            return
+
+        # For other items (veggies)
+        try:
+            # Extract price from price string
+            price_str = item_data[2]  # e.g., "$7.99/kg" or "$5.00/pack" or "$3.00/unit"
+
+            # Remove $ and split by /
+            price_parts = price_str.replace('$', '').split('/')
+            base_price = float(price_parts[0])
+
+            # Calculate total price based on item type
+            if '/kg' in price_str:
+                # For weighted items, quantity is in kg
+                total_price = base_price * quantity
+            else:
+                # For other items (pack, unit), simple multiplication
+                total_price = base_price * quantity
+
+            # Add to cart tree
+            self.cartTree.insert('', 'end', values=(
+                item_data[0],  # Name
+                quantity,  # Quantity
+                f"${total_price:.2f}"  # Total price
+            ))
+
+            self.updateTotal()
+
+        except ValueError as e:
+            messagebox.showerror("Error", f"Invalid price format: {price_str}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Error adding item to cart: {str(e)}")
+
+    def removeFromCart(self):
+        """Remove selected item from cart"""
+        selected = self.cartTree.selection()
+        if not selected:
+            messagebox.showwarning("Warning", "Please select an item to remove")
+            return
+
+        self.cartTree.delete(selected)
         self.updateTotal()
+
+    def showCartSummary(self):
+        """Show a summary window for cart total"""
+        summaryWindow = tk.Toplevel(self)
+        summaryWindow.title("Cart Summary")
+        summaryWindow.geometry("400x300")
+
+        # Make window modal
+        summaryWindow.transient(self)
+        summaryWindow.grab_set()
+
+        # Center window
+        summaryWindow.update_idletasks()
+        width = summaryWindow.winfo_width()
+        height = summaryWindow.winfo_height()
+        x = (summaryWindow.winfo_screenwidth() // 2) - (width // 2)
+        y = (summaryWindow.winfo_screenheight() // 2) - (height // 2)
+        summaryWindow.geometry(f'{width}x{height}+{x}+{y}')
+
+        # Create content
+        ttk.Label(summaryWindow, text="Cart Summary",
+                  font=('Helvetica', 12, 'bold')).pack(pady=10)
+
+        # Cart items frame
+        cartFrame = ttk.LabelFrame(summaryWindow, text="Items in Cart")
+        cartFrame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+
+        # Create Treeview for cart items
+        columns = ('Item', 'Quantity', 'Price')
+        cartSummaryTree = ttk.Treeview(cartFrame, columns=columns, show='headings', height=5)
+
+        for col in columns:
+            cartSummaryTree.heading(col, text=col)
+
+        # Add all items from cart
+        cart_total = 0
+        for item in self.cartTree.get_children():
+            values = self.cartTree.item(item)['values']
+            cartSummaryTree.insert('', 'end', values=values)
+            # Add to total (remove $ and convert to float)
+            cart_total += float(values[2].replace('$', ''))
+
+        cartSummaryTree.pack(fill=tk.BOTH, expand=True, pady=5)
+
+        # Total information
+        totalFrame = ttk.Frame(summaryWindow)
+        totalFrame.pack(fill=tk.X, padx=10, pady=5)
+
+        # Show subtotal
+        ttk.Label(totalFrame, text=f"Subtotal: ${cart_total:.2f}",
+                  font=('Helvetica', 10)).pack(pady=2)
+
+        # Show delivery fee if applicable
+        if self.deliveryMethod.get() == "DELIVERY":
+            ttk.Label(totalFrame, text="Delivery Fee: $10.00",
+                      font=('Helvetica', 10)).pack(pady=2)
+            ttk.Label(totalFrame, text=f"Total: ${cart_total + 10:.2f}",
+                      font=('Helvetica', 10, 'bold')).pack(pady=2)
+        else:
+            ttk.Label(totalFrame, text=f"Total: ${cart_total:.2f}",
+                      font=('Helvetica', 10, 'bold')).pack(pady=2)
+
+        # Buttons
+        buttonFrame = ttk.Frame(summaryWindow)
+        buttonFrame.pack(fill=tk.X, padx=10, pady=10)
+
+        ttk.Button(buttonFrame, text="Continue Shopping",
+                   command=summaryWindow.destroy).pack(side=tk.LEFT, padx=5)
+        ttk.Button(buttonFrame, text="Proceed to Checkout",
+                   command=lambda: [summaryWindow.destroy(), self.checkout()]).pack(side=tk.LEFT, padx=5)
+
+    def viewFullCart(self):
+        """Show full cart details"""
+        cartWindow = tk.Toplevel(self)
+        cartWindow.title("Shopping Cart")
+        cartWindow.geometry("500x400")
+
+        ttk.Label(cartWindow, text="Shopping Cart",
+                  font=('Helvetica', 14, 'bold')).pack(pady=10)
+
+        # Create Treeview for cart items
+        columns = ('Item', 'Quantity', 'Price')
+        cartDetailTree = ttk.Treeview(cartWindow, columns=columns, show='headings')
+
+        for col in columns:
+            cartDetailTree.heading(col, text=col)
+
+        # Add all items from cart
+        cart_total = 0
+        for item in self.cartTree.get_children():
+            values = self.cartTree.item(item)['values']
+            cartDetailTree.insert('', 'end', values=values)
+            cart_total += float(values[2].replace('$', ''))
+
+        cartDetailTree.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+
+        # Total and delivery info
+        infoFrame = ttk.LabelFrame(cartWindow, text="Order Summary")
+        infoFrame.pack(fill=tk.X, padx=10, pady=5)
+
+        ttk.Label(infoFrame, text=f"Subtotal: ${cart_total:.2f}").pack(pady=2)
+        if self.deliveryMethod.get() == "DELIVERY":
+            ttk.Label(infoFrame, text="Delivery Fee: $10.00").pack(pady=2)
+            ttk.Label(infoFrame,
+                      text=f"Total: ${cart_total + 10:.2f}",
+                      font=('Helvetica', 10, 'bold')).pack(pady=2)
+        else:
+            ttk.Label(infoFrame,
+                      text=f"Total: ${cart_total:.2f}",
+                      font=('Helvetica', 10, 'bold')).pack(pady=2)
+
+        # Buttons
+        buttonFrame = ttk.Frame(cartWindow)
+        buttonFrame.pack(fill=tk.X, padx=10, pady=10)
+
+        ttk.Button(buttonFrame, text="Close",
+                   command=cartWindow.destroy).pack(side=tk.LEFT, padx=5)
+        ttk.Button(buttonFrame, text="Checkout",
+                   command=lambda: [cartWindow.destroy(), self.checkout()]).pack(side=tk.LEFT, padx=5)
 
     def updateDeliveryFields(self):
         """Show/hide delivery fields based on delivery method"""
@@ -163,18 +401,53 @@ class CustomerOrderTab(ttk.Frame):
 
     def updateTotal(self):
         """Update order total"""
-        total = 0
+        subtotal = 0
         for item in self.cartTree.get_children():
             price = float(self.cartTree.item(item)['values'][2].replace('$', ''))
-            total += price
+            subtotal += price
 
-        if self.deliveryMethod.get() == "DELIVERY":
-            total += 10
-            self.deliveryDetailsFrame.pack()
-        else:
-            self.deliveryDetailsFrame.pack_forget()
+        # Update items total
+        self.itemsTotalLabel.config(text=f"Items Total: ${subtotal:.2f}")
 
+        # Calculate delivery fee
+        delivery_fee = 10.0 if self.deliveryMethod.get() == "DELIVERY" else 0.0
+        self.deliveryFeeLabel.config(text=f"Delivery Fee: ${delivery_fee:.2f}")
+
+        # Calculate total
+        total = subtotal + delivery_fee
         self.totalLabel.config(text=f"Total: ${total:.2f}")
+
+    def submitOrder(self):
+        """Submit the order"""
+        if not self.cartTree.get_children():
+            messagebox.showerror("Error", "Cart is empty!")
+            return
+
+        # Validate delivery details if delivery selected
+        if self.deliveryMethod.get() == "DELIVERY":
+            if not self.validateDelivery():
+                return
+
+        # Calculate final total
+        total = float(self.totalLabel.cget("text").split('$')[1])
+
+        # Show confirmation dialog
+        if messagebox.askyesno("Confirm Order",
+                               f"Total amount: ${total:.2f}\nDo you want to submit this order?"):
+            try:
+                # Create and save order
+                # (Your existing order creation code here)
+                self.checkout()
+
+                # Show success message
+                messagebox.showinfo("Success",
+                                    "Order submitted successfully!\nThank you for your order.")
+
+                # Clear the cart
+                self.clearCart()
+
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to submit order: {str(e)}")
 
     def checkout(self):
         """Process checkout"""
@@ -209,10 +482,13 @@ class CustomerOrderTab(ttk.Frame):
             messagebox.showerror("Error", f"Failed to place order: {str(e)}")
 
     def clearCart(self):
-        """Clear shopping cart"""
+        """Clear all items from cart"""
         for item in self.cartTree.get_children():
             self.cartTree.delete(item)
         self.updateTotal()
+        if self.deliveryMethod.get() == "DELIVERY":
+            self.deliveryMethod.set("PICKUP")
+            self.updateDeliveryFields()
 
 
 class CustomerCurrentOrdersTab(ttk.Frame):

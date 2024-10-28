@@ -3,6 +3,7 @@ from sqlalchemy.orm import relationship
 from enum import Enum
 from datetime import datetime
 
+from . import OrderLine
 from .base import Base
 
 class OrderStatus(Enum):

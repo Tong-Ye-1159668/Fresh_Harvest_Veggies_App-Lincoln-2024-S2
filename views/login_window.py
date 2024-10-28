@@ -4,9 +4,17 @@ from sqlalchemy.orm import Session
 
 from models.Staff import Staff
 from models.Customer import Customer
-from .customer_tabs import CustomerOrderTab, CustomerCurrentOrdersTab, CustomerProfileTab, CustomerPreviousOrdersTab
-from .staff_tabs import StaffOrdersTab, StaffCustomersTab, \
-    StaffReportsTab  # Import directly from the file
+from .customer_tabs import (
+    CustomerOrderTab,
+    CustomerCurrentOrdersTab,
+    CustomerPreviousOrdersTab,
+    CustomerProfileTab
+)
+from .staff_tabs import (
+    StaffOrdersTab,
+    StaffCustomersTab,
+    StaffReportsTab
+)
 
 
 class LoginWindow(tk.Tk):
@@ -77,19 +85,6 @@ class LoginWindow(tk.Tk):
                 return
 
             messagebox.showerror("Error", "Invalid username or password")
-
-
-class CustomerCurrentOrdersTab:
-    pass
-
-
-class CustomerPreviousOrdersTab:
-    pass
-
-
-class CustomerProfileTab:
-    pass
-
 
 class CustomerDashboard(tk.Toplevel):
     def __init__(self, parent, engine, customer):
