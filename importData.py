@@ -1,10 +1,10 @@
-from models import PremadeBox
 from models.Customer import Customer
 from models.CorporateCustomer import CorporateCustomer
 from models.Staff import Staff
 from models.WeightedVeggie import WeightedVeggie
 from models.PackVeggie import PackVeggie
 from models.UnitPriceVeggie import UnitPriceVeggie
+from models.PremadeBox import PremadeBox
 from datetime import datetime
 
 
@@ -116,10 +116,9 @@ def getPremadeBoxList():
     with open("data/premadeBoxData.txt", "r") as premadebFile:
         for line in premadebFile:
             if line.strip():
-                name, size, numbOfBoxes = line.strip().split(',')
+                size, numbOfBoxes = line.strip().split(',')
                 box = PremadeBox(
-                    boxName=name.strip(),
-                    boxSize=int(size),
+                    boxSize=size.strip(),
                     numbOfBoxes=int(numbOfBoxes)
                 )
                 premadeList.append(box)
@@ -152,6 +151,10 @@ def importAllData(session):
         # Add weighted veggies
         for weighted_veggie in getWeightedVeggieList():
             session.add(weighted_veggie)
+
+        # Add premade boxes
+        for premade_box in getPremadeBoxList():
+            session.add(premade_box)
 
         session.commit()
         print("All data imported successfully")
