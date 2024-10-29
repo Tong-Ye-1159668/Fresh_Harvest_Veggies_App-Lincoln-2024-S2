@@ -7,7 +7,7 @@ from . import OrderLine
 from .base import Base
 
 class OrderStatus(Enum):
-    PENDING = "Pending"
+    PENDING = "Pending"      # After payment, waiting for processing
     PROCESSING = "Processing"
     FULFILLED = "Fulfilled"
     CANCELLED = "Cancelled"
@@ -36,8 +36,8 @@ class Order(Base):
 
     # Relationships
     customer = relationship("Customer", back_populates="orders")
-    orderLines = relationship("OrderLine", back_populates="order")
-    payments = relationship("Payment", back_populates="order")
+    orderLines = relationship("OrderLine", back_populates="order", cascade="all, delete-orphan")
+    payments = relationship("Payment", back_populates="order", cascade="all, delete-orphan")
 
     def __init__(self, orderCustomer, orderNumber, deliveryMethod = DeliveryMethod.PICKUP):
         self.orderCustomer = orderCustomer
@@ -67,10 +67,20 @@ class Order(Base):
 
     def cancelOrder(self):
         """Cancel the order if possible"""
-        if self.ifCanCancel():
-            self.orderStatus = OrderStatus.CANCELLED
-            return True
-        return False
+        if self.orderStatus in [OrderStatus.UNPAID.value, OrderStatus.PENDING.value]:
+            # If order was paid (was in PENDING status), process refund
+            if self.orderStatus == OrderStatus.PENDING.value:
+                # Calculate total paid amount
+                total_paid = sum(payment.paymentAmount for payment in self.payments)
+                if total_paid > 0:
+                    # Add refund to customer balance
+                    self.customer.custBalance += total_paid
+                    return True, f"Order cancelled. ${total_paid:.2f} has been refunded to your balance."
+
+            # If order was unpaid, just cancel
+            self.orderStatus = OrderStatus.CANCELLED.value
+            return True, "Order cancelled successfully."
+        return False, "Order cannot be cancelled at this stage."
 
     def updateOrderStatus(self, newStatus):
         """Update order status"""

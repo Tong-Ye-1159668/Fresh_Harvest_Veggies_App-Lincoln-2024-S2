@@ -3,7 +3,8 @@ from tkinter import ttk, messagebox
 from sqlalchemy.orm import Session
 from datetime import datetime
 
-from models import PremadeBox, UnitPriceVeggie, PackVeggie, WeightedVeggie, Item, Order
+from models import PremadeBox, UnitPriceVeggie, PackVeggie, WeightedVeggie, Item, Order, DebitCardPayment, \
+    CreditCardPayment, Customer, OrderLine, Veggie
 from models.Order import DeliveryMethod, Order,OrderStatus
 from views.box_customise_dialog import CustomBoxDialog
 
@@ -30,22 +31,6 @@ class CustomerOrderTab(ttk.Frame):
         rightFrame = ttk.LabelFrame(mainContainer, text="Order Summary")
         rightFrame.grid(row=0, column=2, sticky="nsew", padx=5, pady=5)
 
-        # Cart Total Display
-        cartTotalFrame = ttk.LabelFrame(rightFrame, text="Cart Total")
-        cartTotalFrame.pack(fill=tk.X, pady=5, padx=5)
-
-        # Show detailed price breakdown
-        self.itemsTotalLabel = ttk.Label(cartTotalFrame, text="Items Total: $0.00", font=('Helvetica', 10))
-        self.itemsTotalLabel.pack(pady=2)
-
-        self.deliveryFeeLabel = ttk.Label(cartTotalFrame, text="Delivery Fee: $0.00", font=('Helvetica', 10))
-        self.deliveryFeeLabel.pack(pady=2)
-
-        ttk.Separator(cartTotalFrame, orient='horizontal').pack(fill=tk.X, pady=5)
-
-        self.totalLabel = ttk.Label(cartTotalFrame, text="Total: $0.00", font=('Helvetica', 12, 'bold'))
-        self.totalLabel.pack(pady=2)
-
         # Configure grid weights
         mainContainer.grid_columnconfigure(0, weight=1)
         mainContainer.grid_columnconfigure(1, weight=1)
@@ -65,9 +50,19 @@ class CustomerOrderTab(ttk.Frame):
         quantityFrame = ttk.Frame(leftFrame)
         quantityFrame.pack(fill=tk.X, pady=5)
         ttk.Label(quantityFrame, text="Quantity:").pack(side=tk.LEFT)
-        self.quantity = tk.IntVar(value=1)
-        ttk.Spinbox(quantityFrame, from_=1, to=100, textvariable=self.quantity).pack(side=tk.LEFT, padx=5)
-        ttk.Button(quantityFrame, text="Add to Cart", command=self.addToCart).pack(side=tk.LEFT)
+        self.quantity = tk.StringVar(value="1")  # Changed to StringVar
+
+        # Create different quantity inputs based on item type
+        self.intQuantitySpinbox = ttk.Spinbox(quantityFrame, from_=1, to=100,
+                                              textvariable=self.quantity)
+        self.floatQuantitySpinbox = ttk.Entry(quantityFrame,
+                                              textvariable=self.quantity,
+                                              width=10)
+        self.currentQuantityWidget = self.intQuantitySpinbox  # Default
+        self.currentQuantityWidget.pack(side=tk.LEFT, padx=5)
+
+        ttk.Button(quantityFrame, text="Add to Cart",
+                   command=self.addToCart).pack(side=tk.LEFT)
 
         # Center Frame Content - Cart Items
         self.cartTree = ttk.Treeview(centerFrame, columns=('Name', 'Quantity', 'Price'), show='headings')
@@ -78,7 +73,23 @@ class CustomerOrderTab(ttk.Frame):
 
         # Add Remove button under cart
         ttk.Button(centerFrame, text="Remove Selected",
-                   command=self.removeFromCart).pack(pady=5)
+                  command=self.removeFromCart).pack(pady=5)
+
+        # Cart Total Display
+        totalsFrame = ttk.LabelFrame(rightFrame, text="Cart Total")
+        totalsFrame.pack(fill=tk.X, pady=5, padx=5)
+
+        # Show detailed price breakdown
+        self.itemsTotalLabel = ttk.Label(totalsFrame, text="Items Total: $0.00", font=('Helvetica', 10))
+        self.itemsTotalLabel.pack(pady=2)
+
+        self.deliveryFeeLabel = ttk.Label(totalsFrame, text="Delivery Fee: $0.00", font=('Helvetica', 10))
+        self.deliveryFeeLabel.pack(pady=2)
+
+        ttk.Separator(totalsFrame, orient='horizontal').pack(fill=tk.X, pady=5)
+
+        self.totalLabel = ttk.Label(totalsFrame, text="Total: $0.00", font=('Helvetica', 12, 'bold'))
+        self.totalLabel.pack(pady=2)
 
         # Delivery Options
         deliveryFrame = ttk.LabelFrame(rightFrame, text="Delivery Options")
@@ -86,13 +97,13 @@ class CustomerOrderTab(ttk.Frame):
 
         self.deliveryMethod = tk.StringVar(value="PICKUP")
         ttk.Radiobutton(deliveryFrame, text="Pickup",
-                        variable=self.deliveryMethod,
-                        value="PICKUP",
-                        command=self.updateDeliveryFields).pack(padx=5, pady=2)
+                       variable=self.deliveryMethod,
+                       value="PICKUP",
+                       command=self.updateDeliveryFields).pack(padx=5, pady=2)
         ttk.Radiobutton(deliveryFrame, text="Delivery (+$10)",
-                        variable=self.deliveryMethod,
-                        value="DELIVERY",
-                        command=self.updateDeliveryFields).pack(padx=5, pady=2)
+                       variable=self.deliveryMethod,
+                       value="DELIVERY",
+                       command=self.updateDeliveryFields).pack(padx=5, pady=2)
 
         # Delivery details frame
         self.deliveryDetailsFrame = ttk.Frame(deliveryFrame)
@@ -106,7 +117,7 @@ class CustomerOrderTab(ttk.Frame):
         self.distance = tk.StringVar()
         ttk.Entry(self.deliveryDetailsFrame, textvariable=self.distance, width=10).pack(pady=2)
         ttk.Label(self.deliveryDetailsFrame,
-                  text="*Delivery available within 20km radius only").pack()
+                 text="*Delivery available within 20km radius only").pack()
 
         # Initially hide delivery details
         self.deliveryDetailsFrame.pack_forget()
@@ -120,14 +131,11 @@ class CustomerOrderTab(ttk.Frame):
 
         # Clear Cart button (left-aligned)
         ttk.Button(buttonFrame, text="Clear Cart",
-                   command=self.clearCart,
-                   style='Secondary.TButton').pack(side=tk.LEFT, padx=5)
+                  command=self.clearCart).pack(side=tk.LEFT, padx=5)
 
         # Submit Order button (right-aligned)
-        submitBtn = ttk.Button(buttonFrame, text="Submit Order",
-                               command=self.submitOrder,
-                               style='Primary.TButton')
-        submitBtn.pack(side=tk.RIGHT, padx=5)
+        ttk.Button(buttonFrame, text="Submit Order",
+                  command=self.submitOrder).pack(side=tk.RIGHT, padx=5)
 
         # Load initial data
         self.loadItems()
@@ -196,6 +204,26 @@ class CustomerOrderTab(ttk.Frame):
             ))
             self.updateTotal()
 
+    # Add method to switch quantity input type
+    def updateQuantityInput(self):
+        """Switch between integer and float quantity input based on selected item"""
+        selected = self.itemTree.selection()
+        if not selected:
+            return
+
+        item_data = self.itemTree.item(selected[0])['values']
+
+        # Remove current widget
+        self.currentQuantityWidget.pack_forget()
+
+        # Show appropriate widget based on item type
+        if item_data[1] == 'Weight':  # For weighted veggies
+            self.currentQuantityWidget = self.floatQuantitySpinbox
+        else:  # For other items
+            self.currentQuantityWidget = self.intQuantitySpinbox
+
+        self.currentQuantityWidget.pack(side=tk.LEFT, padx=5)
+
     def addToCart(self):
         """Add selected item to cart"""
         selected = self.itemTree.selection()
@@ -212,6 +240,21 @@ class CustomerOrderTab(ttk.Frame):
             return
 
         # For other items (veggies)
+        try:
+            if isinstance(self.currentQuantityWidget, ttk.Entry):
+                # For weighted items
+                quantity = float(self.quantity.get())
+            else:
+                # For other items
+                quantity = int(self.quantity.get())
+
+            if quantity <= 0:
+                messagebox.showerror("Error", "Quantity must be greater than 0")
+                return
+        except ValueError:
+            messagebox.showerror("Error", "Please enter a valid quantity")
+            return
+
         try:
             # Extract price from price string
             price_str = item_data[2]  # e.g., "$7.99/kg" or "$5.00/pack" or "$3.00/unit"
@@ -320,7 +363,7 @@ class CustomerOrderTab(ttk.Frame):
         ttk.Button(buttonFrame, text="Continue Shopping",
                    command=summaryWindow.destroy).pack(side=tk.LEFT, padx=5)
         ttk.Button(buttonFrame, text="Proceed to Checkout",
-                   command=lambda: [summaryWindow.destroy(), self.checkout()]).pack(side=tk.LEFT, padx=5)
+                   command=lambda: [summaryWindow.destroy(), self.submitOrder()]).pack(side=tk.LEFT, padx=5)
 
     def viewFullCart(self):
         """Show full cart details"""
@@ -369,7 +412,7 @@ class CustomerOrderTab(ttk.Frame):
         ttk.Button(buttonFrame, text="Close",
                    command=cartWindow.destroy).pack(side=tk.LEFT, padx=5)
         ttk.Button(buttonFrame, text="Checkout",
-                   command=lambda: [cartWindow.destroy(), self.checkout()]).pack(side=tk.LEFT, padx=5)
+                   command=lambda: [cartWindow.destroy(), self.submitOrder()]).pack(side=tk.LEFT, padx=5)
 
     def updateDeliveryFields(self):
         """Show/hide delivery fields based on delivery method"""
@@ -418,49 +461,27 @@ class CustomerOrderTab(ttk.Frame):
         self.totalLabel.config(text=f"Total: ${total:.2f}")
 
     def submitOrder(self):
-        """Submit the order"""
+        """Submit and process the order"""
         if not self.cartTree.get_children():
             messagebox.showerror("Error", "Cart is empty!")
-            return
-
-        # Validate delivery details if delivery selected
-        if self.deliveryMethod.get() == "DELIVERY":
-            if not self.validateDelivery():
-                return
-
-        # Calculate final total
-        total = float(self.totalLabel.cget("text").split('$')[1])
-
-        # Show confirmation dialog
-        if messagebox.askyesno("Confirm Order",
-                               f"Total amount: ${total:.2f}\nDo you want to submit this order?"):
-            try:
-                # Create and save order
-                # (Your existing order creation code here)
-                self.checkout()
-
-                # Show success message
-                messagebox.showinfo("Success",
-                                    "Order submitted successfully!\nThank you for your order.")
-
-                # Clear the cart
-                self.clearCart()
-
-            except Exception as e:
-                messagebox.showerror("Error", f"Failed to submit order: {str(e)}")
-
-    def checkout(self):
-        """Process checkout"""
-        if not self.cartTree.get_children():
-            messagebox.showerror("Error", "Cart is empty")
             return
 
         if not self.validateDelivery():
             return
 
-        # Create order
         try:
             with Session(self.engine) as session:
+                # Calculate total order amount
+                total_amount = float(self.totalLabel.cget("text").split('$')[1])
+
+                # Check if order would exceed maxOwing
+                customer = session.query(Customer).get(self.customer.id)
+                if customer.custBalance - total_amount < -customer.maxOwing:
+                    messagebox.showerror("Error",
+                                         "This order would exceed your maximum owing limit.")
+                    return
+
+                # Create new order
                 order = Order(
                     orderCustomer=self.customer.id,
                     orderNumber=f"ORD{datetime.now().strftime('%Y%m%d%H%M%S')}",
@@ -472,14 +493,72 @@ class CustomerOrderTab(ttk.Frame):
                     order.deliveryDistance = float(self.distance.get())
                     order.deliveryFee = 10.0
 
+                # Process cart items
+                for item in self.cartTree.get_children():
+                    cart_item = self.cartTree.item(item)['values']
+                    item_name = cart_item[0].split(' (')[0]  # Get base name without customization
+                    quantity = float(cart_item[1])
+                    price = float(cart_item[2].replace('$', ''))
+
+                    # Find the item in database and update stock
+                    db_item = None
+                    if "Premade Box" in item_name:
+                        box_size = item_name.split()[-1]  # Get 'S', 'M', or 'L'
+                        db_item = session.query(PremadeBox).filter_by(boxSize=box_size).first()
+                    else:
+                        # For veggies
+                        db_item = session.query(Veggie).filter_by(vegName=item_name).first()
+
+                    if db_item:
+                        # Update stock based on item type
+                        if isinstance(db_item, WeightedVeggie):
+                            if db_item.weight < quantity:
+                                raise ValueError(f"Insufficient stock for {item_name}")
+                            db_item.weight -= quantity
+                        elif isinstance(db_item, PackVeggie):
+                            if db_item.numberOfPacks < quantity:
+                                raise ValueError(f"Insufficient stock for {item_name}")
+                            db_item.numberOfPacks -= int(quantity)
+                        elif isinstance(db_item, UnitPriceVeggie):
+                            if db_item.quantity < quantity:
+                                raise ValueError(f"Insufficient stock for {item_name}")
+                            db_item.quantity -= int(quantity)
+                        elif isinstance(db_item, PremadeBox):
+                            if db_item.numbOfBoxes < quantity:
+                                raise ValueError(f"Insufficient stock for {item_name}")
+                            db_item.numbOfBoxes -= int(quantity)
+
+                        # Create order line
+                        order_line = OrderLine(
+                            itemNumber=quantity,
+                            lineTotal=price
+                        )
+                        order_line.item = db_item
+                        order.orderLines.append(order_line)
+                    else:
+                        raise ValueError(f"Item not found: {item_name}")
+
+                # Calculate and set totals
+                order.subtotal = sum(line.lineTotal for line in order.orderLines)
+                order.total = order.subtotal + (10.0 if self.deliveryMethod.get() == "DELIVERY" else 0.0)
+
+                # Update customer balance
+                customer.custBalance -= order.total
+
+                # Save to database
                 session.add(order)
                 session.commit()
 
-                messagebox.showinfo("Success", "Order placed successfully!")
+                messagebox.showinfo("Success",
+                                    f"Order placed successfully!\nYour new balance: ${customer.custBalance:.2f}")
                 self.clearCart()
 
+        except ValueError as e:
+            messagebox.showerror("Error", str(e))
+            session.rollback()
         except Exception as e:
             messagebox.showerror("Error", f"Failed to place order: {str(e)}")
+            session.rollback()
 
     def clearCart(self):
         """Clear all items from cart"""
@@ -515,11 +594,40 @@ class CustomerCurrentOrdersTab(ttk.Frame):
                    command=self.viewOrderDetails).pack(side=tk.LEFT, padx=5)
         ttk.Button(buttonFrame, text="Cancel Order",
                    command=self.cancelOrder).pack(side=tk.LEFT, padx=5)
+        ttk.Button(buttonFrame, text="Make Payment",
+                   command=self.makePayment).pack(side=tk.LEFT, padx=5)
         ttk.Button(buttonFrame, text="Refresh",
                    command=self.loadOrders).pack(side=tk.LEFT, padx=5)
 
         # Load initial data
         self.loadOrders()
+
+    def makePayment(self):
+        """Open payment window for selected order"""
+        selected = self.orderTree.selection()
+        if not selected:
+            messagebox.showwarning("Warning", "Please select an order to pay")
+            return
+
+        orderNum = self.orderTree.item(selected[0])['values'][0]
+
+        with Session(self.engine) as session:
+            order = session.query(Order).filter_by(orderNumber=orderNum).first()
+            if not order:
+                messagebox.showerror("Error", "Order not found")
+                return
+
+            # Check if order is already in PROCESSING status
+            if order.orderStatus == OrderStatus.PROCESSING.value:
+                messagebox.showinfo("Information", "You have already paid for this order.")
+                return
+
+            # Show payment dialog
+            paymentWindow = PaymentDialog(self, self.engine, order)
+            self.wait_window(paymentWindow)
+
+            # Refresh orders after payment
+            self.loadOrders()
 
     def loadOrders(self):
         """Load current orders"""
@@ -613,20 +721,165 @@ class CustomerCurrentOrdersTab(ttk.Frame):
             messagebox.showwarning("Warning", "Please select an order to cancel")
             return
 
+        if not messagebox.askyesno("Confirm Cancellation",
+                                   "Are you sure you want to cancel this order?"):
+            return
+
         orderNum = self.orderTree.item(selected[0])['values'][0]
 
         try:
             with Session(self.engine) as session:
                 order = session.query(Order).filter_by(orderNumber=orderNum).first()
-                if order.cancelOrder():
+
+                success, message = order.cancelOrder()
+                if success:
                     session.commit()
-                    messagebox.showinfo("Success", "Order cancelled successfully")
-                    self.loadOrders()
+                    messagebox.showinfo("Success", message)
+                    self.loadOrders()  # Refresh the order list
                 else:
-                    messagebox.showerror("Error", "Order cannot be cancelled")
+                    messagebox.showerror("Error", message)
+
         except Exception as e:
             messagebox.showerror("Error", f"Failed to cancel order: {str(e)}")
 
+
+# Add new PaymentDialog class
+class PaymentDialog(tk.Toplevel):
+    def __init__(self, parent, engine, order):
+        super().__init__(parent)
+        self.engine = engine
+        self.order = order
+
+        self.title("Make Payment")
+        self.geometry("400x500")
+
+        # Make dialog modal
+        self.transient(parent)
+        self.grab_set()
+
+        # Order details frame
+        detailsFrame = ttk.LabelFrame(self, text="Order Details")
+        detailsFrame.pack(fill=tk.X, padx=10, pady=5)
+
+        ttk.Label(detailsFrame, text=f"Order Number: {order.orderNumber}").pack()
+        ttk.Label(detailsFrame, text=f"Order Total: ${order.total:.2f}").pack()
+
+        # Calculate remaining balance
+        remainingBalance = order.calcRemainingBalance()
+        ttk.Label(detailsFrame, text=f"Remaining Balance: ${remainingBalance:.2f}",
+                  font=('Helvetica', 10, 'bold')).pack()
+
+        # Payment method frame
+        methodFrame = ttk.LabelFrame(self, text="Payment Method")
+        methodFrame.pack(fill=tk.X, padx=10, pady=5)
+
+        self.paymentMethod = tk.StringVar(value="credit")
+        ttk.Radiobutton(methodFrame, text="Credit Card",
+                        variable=self.paymentMethod,
+                        value="credit").pack(padx=5, pady=2)
+        ttk.Radiobutton(methodFrame, text="Debit Card",
+                        variable=self.paymentMethod,
+                        value="debit").pack(padx=5, pady=2)
+
+        # Payment amount frame
+        amountFrame = ttk.LabelFrame(self, text="Payment Amount")
+        amountFrame.pack(fill=tk.X, padx=10, pady=5)
+
+        ttk.Label(amountFrame, text="Amount:").pack()
+        self.amount = tk.StringVar(value=f"{remainingBalance:.2f}")
+        ttk.Entry(amountFrame, textvariable=self.amount).pack(pady=5)
+
+        # Card details frame
+        self.cardFrame = ttk.LabelFrame(self, text="Card Details")
+        self.cardFrame.pack(fill=tk.X, padx=10, pady=5)
+
+        ttk.Label(self.cardFrame, text="Card Number:").pack()
+        self.cardNumber = tk.StringVar()
+        ttk.Entry(self.cardFrame, textvariable=self.cardNumber).pack(pady=2)
+
+        ttk.Label(self.cardFrame, text="Expiry Date (MM/YY):").pack()
+        self.expiryDate = tk.StringVar()
+        ttk.Entry(self.cardFrame, textvariable=self.expiryDate).pack(pady=2)
+
+        ttk.Label(self.cardFrame, text="CVV:").pack()
+        self.cvv = tk.StringVar()
+        ttk.Entry(self.cardFrame, textvariable=self.cvv, show="*").pack(pady=2)
+
+        # Buttons
+        buttonFrame = ttk.Frame(self)
+        buttonFrame.pack(fill=tk.X, padx=10, pady=10)
+
+        ttk.Button(buttonFrame, text="Cancel",
+                   command=self.destroy).pack(side=tk.LEFT, padx=5)
+        ttk.Button(buttonFrame, text="Make Payment",
+                   command=self.processPayment).pack(side=tk.RIGHT, padx=5)
+
+    def processPayment(self):
+        """Process the payment"""
+        try:
+            # Clean the amount string and convert to float
+            amount_str = self.amount.get().strip()
+            amount = float(amount_str)
+
+            if amount <= 0:
+                messagebox.showerror("Error", "Payment amount must be greater than 0")
+                return
+
+            with Session(self.engine) as session:
+                order = session.merge(self.order)
+                customer = order.customer
+
+                # Create payment based on method
+                if self.paymentMethod.get() == "credit":
+                    payment = CreditCardPayment(
+                        paymentAmount=amount,
+                        paymentDate=datetime.now(),
+                        cardNumber=self.cardNumber.get().strip(),
+                        cardExpiryDate=datetime.strptime(self.expiryDate.get().strip(), "%m/%y"),
+                        cardType="Credit"
+                    )
+                else:
+                    payment = DebitCardPayment(
+                        paymentAmount=amount,
+                        paymentDate=datetime.now(),
+                        debitCardNumber=self.cardNumber.get().strip(),
+                        bankName="Default Bank"
+                    )
+
+                payment.order = order
+                session.add(payment)
+
+                # Update customer balance
+                customer.custBalance += amount
+
+                # Update order status to PROCESSING after payment
+                order.orderStatus = OrderStatus.PROCESSING.value
+
+                session.commit()
+
+                messagebox.showinfo("Success",
+                                    f"Payment of ${amount:.2f} processed successfully\n" +
+                                    f"New balance: ${customer.custBalance:.2f}\n" +
+                                    "Order status updated to Processing")
+                self.destroy()
+
+        except ValueError as e:
+            # Add more specific error messages
+            if "time data" in str(e):
+                messagebox.showerror("Error", "Please enter date in MM/YY format")
+            else:
+                messagebox.showerror("Error", "Please enter a valid payment amount")
+        except Exception as e:
+            messagebox.showerror("Error", f"Payment failed: {str(e)}")
+
+        except ValueError as e:
+            # Add more specific error messages
+            if "time data" in str(e):
+                messagebox.showerror("Error", "Please enter date in MM/YY format")
+            else:
+                messagebox.showerror("Error", "Please enter a valid payment amount")
+        except Exception as e:
+            messagebox.showerror("Error", f"Payment failed: {str(e)}")
 
 class CustomerPreviousOrdersTab(ttk.Frame):
     def __init__(self, parent, engine, customer):
