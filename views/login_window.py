@@ -89,7 +89,7 @@ class LoginWindow(tk.Tk):
 class CustomerDashboard(tk.Toplevel):
     def __init__(self, parent, engine, customer):
         super().__init__(parent)
-
+        self.parent = parent
         self.engine = engine
         self.customer = customer
         self.title(f"Welcome, {customer.firstName} {customer.lastName}")
@@ -122,7 +122,7 @@ class CustomerDashboard(tk.Toplevel):
 class StaffDashboard(tk.Toplevel):
     def __init__(self, parent, engine, staff):
         super().__init__(parent)
-
+        self.parent = parent
         self.engine = engine
         self.staff = staff
         self.title(f"Staff Dashboard - {staff.firstName} {staff.lastName}")
