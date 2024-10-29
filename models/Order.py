@@ -24,8 +24,8 @@ class Order(Base):
     id = Column(Integer, primary_key=True)
     orderCustomer = Column(Integer, ForeignKey('customers.id'))
     orderDate = Column(Date)
-    orderNumber = Column(String(20), unique=True)  # Unique order/tracking number for shipment or pick-up
-    orderStatus = Column(String(20))
+    orderNumber = Column(String(50), unique=True)  # Unique order/tracking number for shipment or pick-up
+    orderStatus = Column(String(50))
     deliveryMethod = Column(SQLEnum(DeliveryMethod))
     deliveryAddress = Column(String(255))
     deliveryDistance = Column(Float)
