@@ -182,7 +182,7 @@ class StaffOrdersTab(ttk.Frame):
             try:
                 with Session(self.engine) as session:
                     order = session.query(Order).filter_by(orderNumber=orderNum).first()
-                    order.updateOrderStatus(dialog.result)
+                    order.orderStatus = dialog.result.value
                     session.commit()
                     self.loadOrders()
                     messagebox.showinfo("Success", "Order status updated successfully")
