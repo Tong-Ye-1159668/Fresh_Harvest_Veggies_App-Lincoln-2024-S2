@@ -15,65 +15,85 @@ class CustomerOrderTab(ttk.Frame):
         self.engine = engine
         self.customer = customer
 
-        # Create main container with 3 columns
+        # Create main container with 4 columns
         mainContainer = ttk.Frame(self)
         mainContainer.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
-        # Left frame - Available Items (1/3 of width)
+        # Left frame - Available Items (1/4 of width)
         leftFrame = ttk.LabelFrame(mainContainer, text="Available Items")
-        leftFrame.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+        leftFrame.grid(row=0, column=0, columnspan=1, sticky="nsew", padx=5, pady=5)
 
-        # Center frame - Shopping Cart (1/3 of width)
+        # Center frame - Shopping Cart (1/4 of width)
         centerFrame = ttk.LabelFrame(mainContainer, text="Shopping Cart")
-        centerFrame.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
+        centerFrame.grid(row=0, column=1, columnspan=1, sticky="nsew", padx=5, pady=5)
 
-        # Right Frame Content - Order Summary
+        # Right Frame Content - Order Summary (2/4 of width)
         rightFrame = ttk.LabelFrame(mainContainer, text="Order Summary")
-        rightFrame.grid(row=0, column=2, sticky="nsew", padx=5, pady=5)
+        rightFrame.grid(row=0, column=2, columnspan=2, sticky="nsew", padx=5, pady=5)
 
-        # Configure grid weights
-        mainContainer.grid_columnconfigure(0, weight=1)
-        mainContainer.grid_columnconfigure(1, weight=1)
-        mainContainer.grid_columnconfigure(2, weight=1)
+        # Configure grid weights for 4 columns (1:1:2 ratio)
+        mainContainer.grid_columnconfigure(0, weight=1)  # Available Items (1/4)
+        mainContainer.grid_columnconfigure(1, weight=1)  # Shopping Cart (1/4)
+        mainContainer.grid_columnconfigure(2, weight=2)  # Order Summary (2/4)
         mainContainer.grid_rowconfigure(0, weight=1)
 
         # Left Frame Content - Available Items
-        # Create Treeview for items
         self.itemTree = ttk.Treeview(leftFrame, columns=('Name', 'Type', 'Price', 'Stock'), show='headings')
         self.itemTree.heading('Name', text='Name')
         self.itemTree.heading('Type', text='Type')
         self.itemTree.heading('Price', text='Price')
         self.itemTree.heading('Stock', text='Available')
+
+        # Set specific widths for the columns
+        self.itemTree.column('Name', width=100)
+        self.itemTree.column('Type', width=60)
+        self.itemTree.column('Price', width=70)
+        self.itemTree.column('Stock', width=70)
+
+        # Add scrollbar to Available Items
+        itemScrollbar = ttk.Scrollbar(leftFrame, orient="vertical", command=self.itemTree.yview)
+        itemScrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.itemTree.configure(yscrollcommand=itemScrollbar.set)
         self.itemTree.pack(fill=tk.BOTH, expand=True, pady=5)
 
         # Add quantity spinbox and Add to Cart button
         quantityFrame = ttk.Frame(leftFrame)
         quantityFrame.pack(fill=tk.X, pady=5)
-        ttk.Label(quantityFrame, text="Quantity:").pack(side=tk.LEFT)
-        self.quantity = tk.StringVar(value="1")  # Changed to StringVar
+        ttk.Label(quantityFrame, text="Quantity:").pack(side=tk.LEFT, padx=(0, 2))
+        self.quantity = tk.StringVar(value="1")
 
         # Create different quantity inputs based on item type
         self.intQuantitySpinbox = ttk.Spinbox(quantityFrame, from_=1, to=100,
-                                              textvariable=self.quantity)
+                                              textvariable=self.quantity, width=8)
         self.floatQuantitySpinbox = ttk.Entry(quantityFrame,
                                               textvariable=self.quantity,
-                                              width=10)
-        self.currentQuantityWidget = self.intQuantitySpinbox  # Default
-        self.currentQuantityWidget.pack(side=tk.LEFT, padx=5)
+                                              width=8)
+        self.currentQuantityWidget = self.intQuantitySpinbox
+        self.currentQuantityWidget.pack(side=tk.LEFT, padx=2)
 
         ttk.Button(quantityFrame, text="Add to Cart",
-                   command=self.addToCart).pack(side=tk.LEFT)
+                   command=self.addToCart).pack(side=tk.LEFT, padx=2)
 
-        # Center Frame Content - Cart Items
+        # Center Frame Content - Shopping Cart
         self.cartTree = ttk.Treeview(centerFrame, columns=('Name', 'Quantity', 'Price'), show='headings')
         self.cartTree.heading('Name', text='Name')
         self.cartTree.heading('Quantity', text='Quantity')
         self.cartTree.heading('Price', text='Price')
+
+        # Set specific widths for the cart columns
+        self.cartTree.column('Name', width=100)
+        self.cartTree.column('Quantity', width=70)
+        self.cartTree.column('Price', width=70)
+
+        # Add scrollbar to Shopping Cart
+        cartScrollbar = ttk.Scrollbar(centerFrame, orient="vertical", command=self.cartTree.yview)
+        cartScrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.cartTree.configure(yscrollcommand=cartScrollbar.set)
         self.cartTree.pack(fill=tk.BOTH, expand=True, pady=5)
 
         # Add Remove button under cart
         ttk.Button(centerFrame, text="Remove Selected",
-                  command=self.removeFromCart).pack(pady=5)
+                   command=self.removeFromCart).pack(pady=5)
 
         # Cart Total Display
         totalsFrame = ttk.LabelFrame(rightFrame, text="Cart Total")
@@ -131,11 +151,11 @@ class CustomerOrderTab(ttk.Frame):
 
         # Clear Cart button (left-aligned)
         ttk.Button(buttonFrame, text="Clear Cart",
-                  command=self.clearCart).pack(side=tk.LEFT, padx=5)
+                   command=self.clearCart).pack(side=tk.LEFT, padx=5)
 
         # Submit Order button (right-aligned)
         ttk.Button(buttonFrame, text="Submit Order",
-                  command=self.submitOrder).pack(side=tk.RIGHT, padx=5)
+                   command=self.submitOrder).pack(side=tk.RIGHT, padx=5)
 
         # Load initial data
         self.loadItems()

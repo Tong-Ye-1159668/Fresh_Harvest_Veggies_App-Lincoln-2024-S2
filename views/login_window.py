@@ -4,17 +4,9 @@ from sqlalchemy.orm import Session
 
 from models.Staff import Staff
 from models.Customer import Customer
-from .customer_tabs import (
-    CustomerOrderTab,
-    CustomerCurrentOrdersTab,
-    CustomerPreviousOrdersTab,
-    CustomerProfileTab
-)
-from .staff_tabs import (
-    StaffOrdersTab,
-    StaffCustomersTab,
-    StaffReportsTab
-)
+from .CustomerView import CustomerView
+from .StaffView import StaffView
+
 
 
 class LoginWindow(tk.Tk):
@@ -23,7 +15,7 @@ class LoginWindow(tk.Tk):
 
         self.engine = engine
         self.title("Fresh Harvest Veggies - Login")
-        self.geometry("400x300")
+        self.geometry("500x500")
 
         # Center window
         self.centerWindow()
@@ -32,23 +24,41 @@ class LoginWindow(tk.Tk):
         mainFrame = ttk.Frame(self, padding="20")
         mainFrame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
+        # Logo frame
+        logoFrame = ttk.Frame(mainFrame)
+        logoFrame.grid(row=0, column=0, columnspan=2, pady=20)
+
+        # Load and display logo
+        try:
+            self.logo = tk.PhotoImage(file='static/logo.png')
+            self.logo = self.logo.subsample(3, 3)  # Adjust size as needed
+            logoLabel = ttk.Label(logoFrame, image=self.logo)
+            logoLabel.pack()
+        except Exception as e:
+            print(f"Error loading logo: {e}")
+
         # Title
-        ttk.Label(mainFrame, text="Fresh Harvest Veggies",
-                  font=('Helvetica', 16, 'bold')).grid(row=0, column=0, columnspan=2, pady=20)
+        ttk.Label(mainFrame,
+                 text="Fresh Harvest Veggies",
+                 font=('Helvetica', 16, 'bold')).grid(row=1, column=0, columnspan=2, pady=20)
 
         # Username
-        ttk.Label(mainFrame, text="Username:").grid(row=1, column=0, pady=5)
+        ttk.Label(mainFrame, text="Username:").grid(row=2, column=0, pady=5)
         self.username = tk.StringVar()
-        ttk.Entry(mainFrame, textvariable=self.username).grid(row=1, column=1, pady=5)
+        ttk.Entry(mainFrame, textvariable=self.username).grid(row=2, column=1, pady=5)
 
         # Password
-        ttk.Label(mainFrame, text="Password:").grid(row=2, column=0, pady=5)
+        ttk.Label(mainFrame, text="Password:").grid(row=3, column=0, pady=5)
         self.password = tk.StringVar()
-        ttk.Entry(mainFrame, textvariable=self.password, show="*").grid(row=2, column=1, pady=5)
+        ttk.Entry(mainFrame, textvariable=self.password, show="*").grid(row=3, column=1, pady=5)
 
         # Login button
-        ttk.Button(mainFrame, text="Login",
-                   command=self.login).grid(row=3, column=0, columnspan=2, pady=20)
+        loginButton = ttk.Button(mainFrame, text="Login", command=self.login)
+        loginButton.grid(row=4, column=0, columnspan=2, pady=20)
+
+        # Configure grid
+        self.grid_columnconfigure(0, weight=1)
+        mainFrame.grid_columnconfigure(1, weight=1)
 
     def centerWindow(self):
         """Center the window on the screen"""
@@ -58,6 +68,13 @@ class LoginWindow(tk.Tk):
         x = (self.winfo_screenwidth() // 2) - (width // 2)
         y = (self.winfo_screenheight() // 2) - (height // 2)
         self.geometry(f'{width}x{height}+{x}+{y}')
+
+    def handleLogout(self, window):
+        """Handle logout and window cleanup"""
+        window.destroy()
+        self.deiconify()  # Show login window
+        self.username.set("")  # Clear login fields
+        self.password.set("")
 
     def login(self):
         username = self.username.get()
@@ -72,79 +89,26 @@ class LoginWindow(tk.Tk):
             staff = session.query(Staff).filter_by(
                 username=username, password=password).first()
             if staff:
-                self.withdraw()  # Hide login window
-                StaffDashboard(self, self.engine, staff)
+                # Create new window for staff view using Toplevel
+                staffWindow = tk.Toplevel(self)
+                staffWindow.geometry("1280x720")
+                staffView = StaffView(staffWindow, self.engine, staff)
+                staffView.pack(fill=tk.BOTH, expand=True)
+                staffWindow.protocol("WM_DELETE_WINDOW", lambda: self.handleLogout(staffWindow))
+                self.withdraw()
                 return
 
             # Check if customer
             customer = session.query(Customer).filter_by(
                 username=username, password=password).first()
             if customer:
-                self.withdraw()  # Hide login window
-                CustomerDashboard(self, self.engine, customer)
+                # Create new window for customer view using Toplevel
+                customerWindow = tk.Toplevel(self)
+                customerWindow.geometry("1280x720")
+                customerView = CustomerView(customerWindow, self.engine, customer)
+                customerView.pack(fill=tk.BOTH, expand=True)
+                customerWindow.protocol("WM_DELETE_WINDOW", lambda: self.handleLogout(customerWindow))
+                self.withdraw()
                 return
 
             messagebox.showerror("Error", "Invalid username or password")
-
-class CustomerDashboard(tk.Toplevel):
-    def __init__(self, parent, engine, customer):
-        super().__init__(parent)
-        self.parent = parent
-        self.engine = engine
-        self.customer = customer
-        self.title(f"Welcome, {customer.firstName} {customer.lastName}")
-        self.geometry("800x600")
-
-        # Create notebook for tabs
-        self.notebook = ttk.Notebook(self)
-        self.notebook.pack(fill='both', expand=True, padx=10, pady=5)
-
-        # Create tabs
-        self.orderTab = CustomerOrderTab(self.notebook, engine, customer)
-        self.currentOrdersTab = CustomerCurrentOrdersTab(self.notebook, engine, customer)
-        self.previousOrdersTab = CustomerPreviousOrdersTab(self.notebook, engine, customer)
-        self.profileTab = CustomerProfileTab(self.notebook, engine, customer)
-
-        # Add tabs to notebook
-        self.notebook.add(self.orderTab, text="Place Order")
-        self.notebook.add(self.currentOrdersTab, text="Current Orders")
-        self.notebook.add(self.previousOrdersTab, text="Order History")
-        self.notebook.add(self.profileTab, text="My Profile")
-
-        # Logout button
-        ttk.Button(self, text="Logout", command=self.logout).pack(pady=10)
-
-    def logout(self):
-        self.parent.deiconify()  # Show login window
-        self.destroy()  # Close dashboard
-
-
-class StaffDashboard(tk.Toplevel):
-    def __init__(self, parent, engine, staff):
-        super().__init__(parent)
-        self.parent = parent
-        self.engine = engine
-        self.staff = staff
-        self.title(f"Staff Dashboard - {staff.firstName} {staff.lastName}")
-        self.geometry("1024x768")
-
-        # Create notebook for tabs
-        self.notebook = ttk.Notebook(self)
-        self.notebook.pack(fill='both', expand=True, padx=10, pady=5)
-
-        # Create tabs
-        self.ordersTab = StaffOrdersTab(self.notebook, engine)
-        self.customersTab = StaffCustomersTab(self.notebook, engine)
-        self.reportsTab = StaffReportsTab(self.notebook, engine)
-
-        # Add tabs to notebook
-        self.notebook.add(self.ordersTab, text="Manage Orders")
-        self.notebook.add(self.customersTab, text="Customers")
-        self.notebook.add(self.reportsTab, text="Reports")
-
-        # Logout button
-        ttk.Button(self, text="Logout", command=self.logout).pack(pady=10)
-
-    def logout(self):
-        self.parent.deiconify()  # Show login window
-        self.destroy()  # Close dashboard
