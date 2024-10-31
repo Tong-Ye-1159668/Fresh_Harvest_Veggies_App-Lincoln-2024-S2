@@ -702,6 +702,25 @@ class CustomerCurrentOrdersTab(ttk.Frame):
 
             itemTree.pack(fill=tk.BOTH, expand=True)
 
+            # Payment History
+            paymentFrame = ttk.LabelFrame(detailsWindow, text="Payment History")
+            paymentFrame.pack(fill=tk.X, padx=10, pady=5)
+
+            paymentColumns = ('Date', 'Amount', 'Type')
+            paymentTree = ttk.Treeview(paymentFrame, columns=paymentColumns, show='headings', height=3)
+
+            for col in paymentColumns:
+                paymentTree.heading(col, text=col)
+
+            for payment in order.payments:
+                paymentTree.insert('', 'end', values=(
+                    payment.paymentDate.strftime('%Y-%m-%d'),
+                    f"${payment.paymentAmount:.2f}",
+                    payment.type
+                ))
+
+            paymentTree.pack(fill=tk.X)
+
             # Totals
             totalsFrame = ttk.Frame(detailsWindow)
             totalsFrame.pack(fill=tk.X, padx=10, pady=5)
@@ -713,6 +732,12 @@ class CustomerCurrentOrdersTab(ttk.Frame):
                 ttk.Label(totalsFrame, text=f"Delivery Fee: ${order.deliveryFee:.2f}").pack()
             ttk.Label(totalsFrame, text=f"Total: ${order.total:.2f}",
                       font=('Helvetica', 10, 'bold')).pack()
+
+            # Show remaining balance if any
+            remaining = order.calcRemainingBalance()
+            if remaining > 0:
+                ttk.Label(totalsFrame, text=f"Remaining Balance: ${remaining:.2f}",
+                          foreground='red').pack()
 
     def cancelOrder(self):
         """Cancel selected order"""
@@ -934,7 +959,78 @@ class CustomerPreviousOrdersTab(ttk.Frame):
             return
 
         orderNum = self.orderTree.item(selected[0])['values'][0]
-        self.showOrderDetails(orderNum)  # Reuse the same method from CurrentOrdersTab
+        self.showOrderDetails(orderNum)
+
+    def showOrderDetails(self, orderNum):
+        """Display order details in new window"""
+        detailsWindow = tk.Toplevel(self)
+        detailsWindow.title(f"Order Details - {orderNum}")
+        detailsWindow.geometry("600x400")
+
+        with Session(self.engine) as session:
+            order = session.query(Order).filter_by(orderNumber=orderNum).first()
+
+            # Order info
+            infoFrame = ttk.LabelFrame(detailsWindow, text="Order Information")
+            infoFrame.pack(fill=tk.X, padx=10, pady=5)
+
+            ttk.Label(infoFrame, text=f"Order Number: {order.orderNumber}").pack()
+            ttk.Label(infoFrame, text=f"Date: {order.orderDate}").pack()
+            ttk.Label(infoFrame, text=f"Status: {order.orderStatus}").pack()
+
+            if order.deliveryMethod == DeliveryMethod.DELIVERY:
+                ttk.Label(infoFrame, text=f"Delivery Address: {order.deliveryAddress}").pack()
+                ttk.Label(infoFrame, text=f"Delivery Fee: ${order.deliveryFee:.2f}").pack()
+
+            # Items
+            itemsFrame = ttk.LabelFrame(detailsWindow, text="Order Items")
+            itemsFrame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+
+            columns = ('Item', 'Quantity', 'Price', 'Total')
+            itemTree = ttk.Treeview(itemsFrame, columns=columns, show='headings')
+            for col in columns:
+                itemTree.heading(col, text=col)
+
+            for line in order.orderLines:
+                itemTree.insert('', 'end', values=(
+                    line.getItemDetails(),
+                    line.itemNumber,
+                    f"${line.lineTotal / line.itemNumber:.2f}",
+                    f"${line.lineTotal:.2f}"
+                ))
+
+            itemTree.pack(fill=tk.BOTH, expand=True)
+
+            # Payment History
+            paymentFrame = ttk.LabelFrame(detailsWindow, text="Payment History")
+            paymentFrame.pack(fill=tk.X, padx=10, pady=5)
+
+            paymentColumns = ('Date', 'Amount', 'Type')
+            paymentTree = ttk.Treeview(paymentFrame, columns=paymentColumns, show='headings', height=3)
+
+            for col in paymentColumns:
+                paymentTree.heading(col, text=col)
+
+            for payment in order.payments:
+                paymentTree.insert('', 'end', values=(
+                    payment.paymentDate.strftime('%Y-%m-%d'),
+                    f"${payment.paymentAmount:.2f}",
+                    payment.type
+                ))
+
+            paymentTree.pack(fill=tk.X)
+
+            # Totals
+            totalsFrame = ttk.Frame(detailsWindow)
+            totalsFrame.pack(fill=tk.X, padx=10, pady=5)
+
+            ttk.Label(totalsFrame, text=f"Subtotal: ${order.subtotal:.2f}").pack()
+            if order.discount > 0:
+                ttk.Label(totalsFrame, text=f"Discount: ${order.discount:.2f}").pack()
+            if order.deliveryFee > 0:
+                ttk.Label(totalsFrame, text=f"Delivery Fee: ${order.deliveryFee:.2f}").pack()
+            ttk.Label(totalsFrame, text=f"Total: ${order.total:.2f}",
+                      font=('Helvetica', 10, 'bold')).pack()
 
 
 class CustomerProfileTab(ttk.Frame):
