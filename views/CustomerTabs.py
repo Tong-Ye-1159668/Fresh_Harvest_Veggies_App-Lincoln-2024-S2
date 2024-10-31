@@ -6,7 +6,7 @@ from datetime import datetime
 from models import PremadeBox, UnitPriceVeggie, PackVeggie, WeightedVeggie, Item, Order, DebitCardPayment, \
     CreditCardPayment, Customer, OrderLine, Veggie, Payment
 from models.Order import DeliveryMethod, Order,OrderStatus
-from views.box_customise_dialog import CustomBoxDialog
+from views.BoxCustomiseDialog import CustomBoxDialog
 
 
 class CustomerOrderTab(ttk.Frame):

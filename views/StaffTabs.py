@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from models import Order, Customer, Item, OrderLine
 from models.Order import OrderStatus, DeliveryMethod
-from .order_status_dialog import OrderStatusDialog
+from .OrderStatusDialog import OrderStatusDialog
 
 
 class StaffOrdersTab(ttk.Frame):

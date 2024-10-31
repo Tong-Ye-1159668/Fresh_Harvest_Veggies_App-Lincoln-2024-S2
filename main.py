@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from models import *
-from views.login_window import LoginWindow
+from views.LoginWindow import LoginWindow
 from importData import importAllData
 
 

@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from .Sidebar import Sidebar
-from .customer_tabs import CustomerOrderTab, CustomerCurrentOrdersTab, CustomerPreviousOrdersTab, CustomerProfileTab
+from .CustomerTabs import CustomerOrderTab, CustomerCurrentOrdersTab, CustomerPreviousOrdersTab, CustomerProfileTab
 
 
 class CustomerView(tk.Frame):  # (or StaffView)
