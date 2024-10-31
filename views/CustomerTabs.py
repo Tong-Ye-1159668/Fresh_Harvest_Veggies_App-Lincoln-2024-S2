@@ -820,6 +820,10 @@ class PaymentDialog(tk.Toplevel):
         self.engine = engine
         self.order = order
 
+        # Initialize widget variables
+        self.creditCardEntry = None
+        self.debitCardEntry = None
+
         self.title("Make Payment")
         self.geometry("400x650")
 
@@ -827,28 +831,42 @@ class PaymentDialog(tk.Toplevel):
         self.transient(parent)
         self.grab_set()
 
-        # Order details frame
-        detailsFrame = ttk.LabelFrame(self, text="Order Details")
+        # Create main container frame
+        mainFrame = ttk.Frame(self, padding="20")
+        mainFrame.pack(fill=tk.BOTH, expand=True)
+
+        # Create all frames and widgets
+        self.createOrderDetailsFrame(mainFrame)
+        self.createPaymentMethodFrame(mainFrame)
+        self.createPaymentAmountFrame(mainFrame)
+        self.createCreditCardFrame(mainFrame)
+        self.createDebitCardFrame(mainFrame)
+        self.createBalanceFrame(mainFrame)
+        self.createButtonFrame()
+
+        # Setup bindings after all widgets are created
+        self.setupBindings()
+
+    def createOrderDetailsFrame(self, parent):
+        detailsFrame = ttk.LabelFrame(parent, text="Order Details")
         detailsFrame.pack(fill=tk.X, padx=10, pady=5)
 
-        ttk.Label(detailsFrame, text=f"Order Number: {order.orderNumber}").pack()
-        ttk.Label(detailsFrame, text=f"Order Total: ${order.total:.2f}").pack()
+        ttk.Label(detailsFrame, text=f"Order Number: {self.order.orderNumber}").pack()
+        ttk.Label(detailsFrame, text=f"Order Total: ${self.order.total:.2f}").pack()
 
-        # Calculate remaining balance
-        remainingOrderBalance = order.calcRemainingBalance()
+        remainingOrderBalance = self.order.calcRemainingBalance()
         ttk.Label(detailsFrame,
                   text=f"Remaining Payment: ${remainingOrderBalance:.2f}",
                   font=('Helvetica', 10, 'bold')).pack()
 
-        # Add customer balance display with different color if positive
-        balance_color = 'green' if order.customer.custBalance > 0 else 'black'
+        balance_color = 'green' if self.order.customer.custBalance > 0 else 'black'
         ttk.Label(detailsFrame,
-                  text=f"Current Balance: ${order.customer.custBalance:.2f}",
+                  text=f"Current Balance: ${self.order.customer.custBalance:.2f}",
                   font=('Helvetica', 10),
                   foreground=balance_color).pack()
 
-        # Payment method frame
-        methodFrame = ttk.LabelFrame(self, text="Payment Method")
+    def createPaymentMethodFrame(self, parent):
+        methodFrame = ttk.LabelFrame(parent, text="Payment Method")
         methodFrame.pack(fill=tk.X, padx=10, pady=5)
 
         self.paymentMethod = tk.StringVar(value="credit")
@@ -861,31 +879,26 @@ class PaymentDialog(tk.Toplevel):
                         value="debit",
                         command=self.updateCardFields).pack(padx=5, pady=2)
 
-        # Pay with Balance option
         useBalanceBtn = ttk.Radiobutton(methodFrame, text="Pay with Balance",
                                         variable=self.paymentMethod,
                                         value="balance",
                                         command=self.updatePaymentFields)
         useBalanceBtn.pack(padx=5, pady=2)
 
-        # Disable balance option if customer has no positive balance
-        if order.customer.custBalance <= 0:
+        if self.order.customer.custBalance <= 0:
             useBalanceBtn.configure(state='disabled')
 
-        # Payment amount frame
-        amountFrame = ttk.LabelFrame(self, text="Payment Amount")
+    def createPaymentAmountFrame(self, parent):
+        amountFrame = ttk.LabelFrame(parent, text="Payment Amount")
         amountFrame.pack(fill=tk.X, padx=10, pady=5)
 
         ttk.Label(amountFrame, text="Amount:").pack()
-        self.amount = tk.StringVar(value=f"{remainingOrderBalance:.2f}")
+        self.amount = tk.StringVar(value=f"{self.order.calcRemainingBalance():.2f}")
         self.amountEntry = ttk.Entry(amountFrame, textvariable=self.amount)
         self.amountEntry.pack(pady=5)
 
-        # Add validation for amount entry
-        self.amountEntry.bind('<KeyRelease>', self.validateAmount)
-
-        # Credit Card details frame
-        self.creditFrame = ttk.LabelFrame(self, text="Credit Card Details")
+    def createCreditCardFrame(self, parent):
+        self.creditFrame = ttk.LabelFrame(parent, text="Credit Card Details")
         self.creditFrame.pack(fill=tk.X, padx=10, pady=5)
 
         ttk.Label(self.creditFrame, text="Card Number:").pack()
@@ -900,13 +913,13 @@ class PaymentDialog(tk.Toplevel):
         ttk.Label(self.creditFrame, text="Card Type:").pack()
         self.cardType = tk.StringVar(value="Visa")
         cardTypeCombo = ttk.Combobox(self.creditFrame,
-                                    textvariable=self.cardType,
-                                    values=["Visa", "Mastercard", "American Express"],
-                                    state='readonly')
+                                     textvariable=self.cardType,
+                                     values=["Visa", "Mastercard", "American Express"],
+                                     state='readonly')
         cardTypeCombo.pack(pady=2)
 
-        # Debit Card details frame
-        self.debitFrame = ttk.LabelFrame(self, text="Debit Card Details")
+    def createDebitCardFrame(self, parent):
+        self.debitFrame = ttk.LabelFrame(parent, text="Debit Card Details")
         self.debitFrame.pack(fill=tk.X, padx=10, pady=5)
 
         ttk.Label(self.debitFrame, text="Card Number:").pack()
@@ -918,28 +931,35 @@ class PaymentDialog(tk.Toplevel):
         self.bankName = tk.StringVar()
         ttk.Entry(self.debitFrame, textvariable=self.bankName).pack(pady=2)
 
-        # Balance payment frame
-        self.balanceFrame = ttk.LabelFrame(self, text="Balance Payment Details")
-        self.balanceFrame.pack(fill=tk.X, padx=10, pady=5)
-
-        ttk.Label(self.balanceFrame,
-                  text=f"Available Balance: ${order.customer.custBalance:.2f}").pack()
-
         # Initially hide debit frame
         self.debitFrame.pack_forget()
 
-        # Buttons
+    def createBalanceFrame(self, parent):
+        self.balanceFrame = ttk.LabelFrame(parent, text="Balance Payment Details")
+        self.balanceFrame.pack(fill=tk.X, padx=10, pady=5)
+
+        ttk.Label(self.balanceFrame,
+                  text=f"Available Balance: ${self.order.customer.custBalance:.2f}").pack()
+
+        # Initially hide balance frame
+        self.balanceFrame.pack_forget()
+
+    def createButtonFrame(self):
         buttonFrame = ttk.Frame(self)
-        buttonFrame.pack(fill=tk.X, padx=10, pady=10)
+        buttonFrame.pack(side=tk.BOTTOM, fill=tk.X, padx=20, pady=10)
 
         ttk.Button(buttonFrame, text="Cancel",
                    command=self.destroy).pack(side=tk.LEFT, padx=5)
         ttk.Button(buttonFrame, text="Make Payment",
                    command=self.processPayment).pack(side=tk.RIGHT, padx=5)
 
-        # Add validation for card numbers
-        self.creditCardEntry.bind('<KeyRelease>', lambda e: self.validateCardNumber(self.creditCardNumber))
-        self.debitCardEntry.bind('<KeyRelease>', lambda e: self.validateCardNumber(self.debitCardNumber))
+    def setupBindings(self):
+        """Setup all event bindings"""
+        self.amountEntry.bind('<KeyRelease>', self.validateAmount)
+        self.creditCardEntry.bind('<KeyRelease>',
+                                  lambda e: self.validateCardNumber(self.creditCardNumber))
+        self.debitCardEntry.bind('<KeyRelease>',
+                                 lambda e: self.validateCardNumber(self.debitCardNumber))
 
     def updatePaymentFields(self):
         """Show/hide appropriate payment fields based on payment method"""
@@ -1154,7 +1174,7 @@ class PaymentDialog(tk.Toplevel):
                     order.customer.custBalance += excess_amount
 
                 # Update order status based on payment amount
-                new_remaining = order.calcRemainingBalance() - payment_amount
+                new_remaining = order.calcRemainingBalance()
                 if new_remaining <= 0:
                     order.orderStatus = OrderStatus.SUBMITTED.value
                 else:
