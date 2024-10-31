@@ -118,10 +118,22 @@ class CustomBoxDialog(tk.Toplevel):
 
     def confirm(self):
         """Confirm selection"""
+        # Check if minimum number of veggies is selected
         selected_items = []
         for item in self.selectedTree.get_children():
             values = self.selectedTree.item(item)['values']
             selected_items.append(values[0])  # Store veggie names
+
+        min_veggies = 1  # Minimum veggies required
+        max_veggies = PremadeBox.getMaxVeggies(self.box_size)
+
+        if len(selected_items) < min_veggies:
+            messagebox.showerror("Error", f"Please select at least {min_veggies} veggie(s) for the box")
+            return
+
+        if len(selected_items) > max_veggies:
+            messagebox.showerror("Error", f"Maximum {max_veggies} veggies allowed for {self.box_size} box")
+            return
 
         self.result = selected_items
         self.destroy()
