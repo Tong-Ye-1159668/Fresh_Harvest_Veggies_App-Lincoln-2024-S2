@@ -619,7 +619,7 @@ class CustomerCurrentOrdersTab(ttk.Frame):
         self.customer = customer
 
         # Update columns to include Remaining Payment
-        columns = ('Order No', 'Date', 'Status', 'Total', 'Remaining', 'Delivery')  # Added 'Remaining'
+        columns = ('Order No', 'Date', 'Status', 'Total', 'Need to Pay', 'Delivery')  # Added 'Remaining'
         self.orderTree = ttk.Treeview(self, columns=columns, show='headings')
 
         # Setup column headings
@@ -711,7 +711,7 @@ class CustomerCurrentOrdersTab(ttk.Frame):
         """Display order details in new window"""
         detailsWindow = tk.Toplevel(self)
         detailsWindow.title(f"Order Details - {orderNum}")
-        detailsWindow.geometry("600x400")
+        detailsWindow.geometry("800x600")
 
         with Session(self.engine) as session:
             order = session.query(Order).filter_by(orderNumber=orderNum).first()
@@ -1054,8 +1054,6 @@ class PaymentDialog(tk.Toplevel):
                 if amount > self.order.customer.custBalance:
                     raise ValueError(f"Insufficient balance (Available: ${self.order.customer.custBalance:.2f})")
 
-            # Note: Removed the check that prevents paying more than remaining balance
-
             if self.paymentMethod.get() == "credit":
                 # Validate credit card fields
                 card_number = self.creditCardNumber.get().strip()
@@ -1271,7 +1269,7 @@ class CustomerPreviousOrdersTab(ttk.Frame):
         """Display order details in new window"""
         detailsWindow = tk.Toplevel(self)
         detailsWindow.title(f"Order Details - {orderNum}")
-        detailsWindow.geometry("600x400")
+        detailsWindow.geometry("800x600")
 
         with Session(self.engine) as session:
             order = session.query(Order).filter_by(orderNumber=orderNum).first()
