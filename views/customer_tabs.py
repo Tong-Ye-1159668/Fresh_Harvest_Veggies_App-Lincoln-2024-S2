@@ -816,10 +816,12 @@ class PaymentDialog(tk.Toplevel):
         self.paymentMethod = tk.StringVar(value="credit")
         ttk.Radiobutton(methodFrame, text="Credit Card",
                         variable=self.paymentMethod,
-                        value="credit").pack(padx=5, pady=2)
+                        value="credit",
+                        command=self.updateCardFields).pack(padx=5, pady=2)
         ttk.Radiobutton(methodFrame, text="Debit Card",
                         variable=self.paymentMethod,
-                        value="debit").pack(padx=5, pady=2)
+                        value="debit",
+                        command=self.updateCardFields).pack(padx=5, pady=2)
 
         # Payment amount frame
         amountFrame = ttk.LabelFrame(self, text="Payment Amount")
@@ -829,21 +831,42 @@ class PaymentDialog(tk.Toplevel):
         self.amount = tk.StringVar(value=f"{remainingBalance:.2f}")
         ttk.Entry(amountFrame, textvariable=self.amount).pack(pady=5)
 
-        # Card details frame
-        self.cardFrame = ttk.LabelFrame(self, text="Card Details")
-        self.cardFrame.pack(fill=tk.X, padx=10, pady=5)
+        # Credit Card details frame
+        self.creditFrame = ttk.LabelFrame(self, text="Credit Card Details")
+        self.creditFrame.pack(fill=tk.X, padx=10, pady=5)
 
-        ttk.Label(self.cardFrame, text="Card Number:").pack()
-        self.cardNumber = tk.StringVar()
-        ttk.Entry(self.cardFrame, textvariable=self.cardNumber).pack(pady=2)
+        ttk.Label(self.creditFrame, text="Card Number:").pack()
+        self.creditCardNumber = tk.StringVar()
+        self.creditCardEntry = ttk.Entry(self.creditFrame, textvariable=self.creditCardNumber)
+        self.creditCardEntry.pack(pady=2)
 
-        ttk.Label(self.cardFrame, text="Expiry Date (MM/YY):").pack()
+        ttk.Label(self.creditFrame, text="Expiry Date (MM/YY):").pack()
         self.expiryDate = tk.StringVar()
-        ttk.Entry(self.cardFrame, textvariable=self.expiryDate).pack(pady=2)
+        ttk.Entry(self.creditFrame, textvariable=self.expiryDate).pack(pady=2)
 
-        ttk.Label(self.cardFrame, text="CVV:").pack()
-        self.cvv = tk.StringVar()
-        ttk.Entry(self.cardFrame, textvariable=self.cvv, show="*").pack(pady=2)
+        ttk.Label(self.creditFrame, text="Card Type:").pack()
+        self.cardType = tk.StringVar(value="Visa")
+        cardTypeCombo = ttk.Combobox(self.creditFrame,
+                                    textvariable=self.cardType,
+                                    values=["Visa", "Mastercard", "American Express"],
+                                    state='readonly')
+        cardTypeCombo.pack(pady=2)
+
+        # Debit Card details frame
+        self.debitFrame = ttk.LabelFrame(self, text="Debit Card Details")
+        self.debitFrame.pack(fill=tk.X, padx=10, pady=5)
+
+        ttk.Label(self.debitFrame, text="Card Number:").pack()
+        self.debitCardNumber = tk.StringVar()
+        self.debitCardEntry = ttk.Entry(self.debitFrame, textvariable=self.debitCardNumber)
+        self.debitCardEntry.pack(pady=2)
+
+        ttk.Label(self.debitFrame, text="Bank Name:").pack()
+        self.bankName = tk.StringVar()
+        ttk.Entry(self.debitFrame, textvariable=self.bankName).pack(pady=2)
+
+        # Initially hide debit frame
+        self.debitFrame.pack_forget()
 
         # Buttons
         buttonFrame = ttk.Frame(self)
@@ -854,16 +877,114 @@ class PaymentDialog(tk.Toplevel):
         ttk.Button(buttonFrame, text="Make Payment",
                    command=self.processPayment).pack(side=tk.RIGHT, padx=5)
 
+        # Add validation for card numbers
+        self.creditCardEntry.bind('<KeyRelease>', lambda e: self.validateCardNumber(self.creditCardNumber))
+        self.debitCardEntry.bind('<KeyRelease>', lambda e: self.validateCardNumber(self.debitCardNumber))
+
+    def validateCardNumber(self, cardVar):
+        """Validate card number to only allow digits"""
+        value = cardVar.get()
+        # Remove any non-digits
+        digits_only = ''.join(filter(str.isdigit, value))
+        cardVar.set(digits_only)
+
+    def updateCardFields(self):
+        """Show/hide appropriate card fields based on payment method"""
+        if self.paymentMethod.get() == "credit":
+            self.creditFrame.pack(fill=tk.X, padx=10, pady=5)
+            self.debitFrame.pack_forget()
+        else:
+            self.debitFrame.pack(fill=tk.X, padx=10, pady=5)
+            self.creditFrame.pack_forget()
+
+    def validateFields(self):
+        """Validate input fields based on payment method"""
+        try:
+            # Validate amount
+            amount = float(self.amount.get())
+            if amount <= 0:
+                raise ValueError("Payment amount must be greater than 0")
+
+            if self.paymentMethod.get() == "credit":
+                # Validate credit card fields
+                card_number = self.creditCardNumber.get().strip()
+                # Validate card number
+                if not card_number:
+                    raise ValueError("Please enter credit card number")
+                if not card_number.isdigit():
+                    raise ValueError("Credit card number must contain only digits")
+                if len(card_number) < 16:
+                    raise ValueError("Credit card number must be at least 16 digits")
+                if len(card_number) > 20:
+                    raise ValueError("Credit card number cannot exceed 20 digits")
+
+                # Validate expiry date
+                expiry = self.expiryDate.get().strip()
+                if not expiry:
+                    raise ValueError("Please enter expiry date")
+                if not expiry or len(expiry) != 5:  # MM/YY format
+                    raise ValueError("Please enter expiry date in MM/YY format")
+
+                try:
+                    month, year = expiry.split('/')
+                    exp_month = int(month)
+                    exp_year = 2000 + int(year)  # Convert YY to YYYY
+
+                    # Get current date
+                    current_date = datetime.now()
+                    current_year = current_date.year
+                    current_month = current_date.month
+
+                    # Validate month range
+                    if not (1 <= exp_month <= 12):
+                        raise ValueError("Invalid expiry month")
+
+                    # Check if card is expired
+                    if exp_year < current_year or \
+                            (exp_year == current_year and exp_month < current_month):
+                        raise ValueError("Card has expired")
+
+                except ValueError as e:
+                    # If error message is from our validation, use it
+                    if str(e) in ["Invalid expiry month", "Card has expired"]:
+                        raise
+                    # Otherwise, it's a format error
+                    raise ValueError("Invalid expiry date format. Use MM/YY")
+
+                # Validate card type is selected
+                if not self.cardType.get():
+                    raise ValueError("Please select card type")
+
+            else:  # Debit card
+                # Validate debit card fields
+                card_number = self.debitCardNumber.get().strip()
+                # Validate card number
+                if not card_number:
+                    raise ValueError("Please enter debit card number")
+                if not card_number.isdigit():
+                    raise ValueError("Debit card number must contain only digits")
+                if len(card_number) < 16:
+                    raise ValueError("Debit card number must be at least 16 digits")
+                if len(card_number) > 20:
+                    raise ValueError("Debit card number cannot exceed 20 digits")
+
+                # Validate bank name
+                if not self.bankName.get().strip():
+                    raise ValueError("Please enter bank name")
+
+            return True
+
+        except ValueError as e:
+            messagebox.showerror("Validation Error", str(e))
+            return False
+
     def processPayment(self):
         """Process the payment"""
-        try:
-            # Clean the amount string and convert to float
-            amount_str = self.amount.get().strip()
-            amount = float(amount_str)
+        if not self.validateFields():
+            return
 
-            if amount <= 0:
-                messagebox.showerror("Error", "Payment amount must be greater than 0")
-                return
+        try:
+            amount = float(self.amount.get())
 
             with Session(self.engine) as session:
                 order = session.merge(self.order)
@@ -874,16 +995,16 @@ class PaymentDialog(tk.Toplevel):
                     payment = CreditCardPayment(
                         paymentAmount=amount,
                         paymentDate=datetime.now(),
-                        cardNumber=self.cardNumber.get().strip(),
+                        cardNumber=self.creditCardNumber.get().strip(),
                         cardExpiryDate=datetime.strptime(self.expiryDate.get().strip(), "%m/%y"),
-                        cardType="Credit"
+                        cardType=self.cardType.get()
                     )
                 else:
                     payment = DebitCardPayment(
                         paymentAmount=amount,
                         paymentDate=datetime.now(),
-                        debitCardNumber=self.cardNumber.get().strip(),
-                        bankName="Default Bank"
+                        debitCardNumber=self.debitCardNumber.get().strip(),
+                        bankName=self.bankName.get().strip()
                     )
 
                 payment.order = order
@@ -899,25 +1020,11 @@ class PaymentDialog(tk.Toplevel):
 
                 messagebox.showinfo("Success",
                                     f"Payment of ${amount:.2f} processed successfully\n" +
-                                    f"New balance: ${customer.custBalance:.2f}\n" +
-                                    "Order status updated to Processing")
+                                    f"New balance: ${customer.custBalance:.2f}")
                 self.destroy()
 
         except ValueError as e:
-            # Add more specific error messages
-            if "time data" in str(e):
-                messagebox.showerror("Error", "Please enter date in MM/YY format")
-            else:
-                messagebox.showerror("Error", "Please enter a valid payment amount")
-        except Exception as e:
-            messagebox.showerror("Error", f"Payment failed: {str(e)}")
-
-        except ValueError as e:
-            # Add more specific error messages
-            if "time data" in str(e):
-                messagebox.showerror("Error", "Please enter date in MM/YY format")
-            else:
-                messagebox.showerror("Error", "Please enter a valid payment amount")
+            messagebox.showerror("Error", str(e))
         except Exception as e:
             messagebox.showerror("Error", f"Payment failed: {str(e)}")
 
