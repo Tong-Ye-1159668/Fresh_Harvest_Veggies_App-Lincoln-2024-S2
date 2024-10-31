@@ -7,7 +7,7 @@ from importData import importAllData
 
 def main():
     # Create database engine
-    engine = create_engine('mysql+mysqldb://root:Crazy2447YT!@localhost:3306/testdb', echo=True)
+    engine = create_engine('mysql+mysqldb://root:Crazy2447YT!@localhost:3306/fhvdb', echo=True)
 
     # Create tables
     Base.metadata.create_all(engine)

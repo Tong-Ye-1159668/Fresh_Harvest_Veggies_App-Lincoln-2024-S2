@@ -1370,8 +1370,5 @@ class CustomerProfileTab(ttk.Frame):
                 # Update the stored customer reference
                 self.customer = customer
 
-                # Show success message (optional)
-                self.after(100, lambda: self.showRefreshMessage())
-
         except Exception as e:
             messagebox.showerror("Error", f"Failed to refresh profile: {str(e)}")
