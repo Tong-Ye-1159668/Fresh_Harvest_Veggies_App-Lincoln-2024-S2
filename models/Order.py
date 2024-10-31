@@ -7,11 +7,12 @@ from . import OrderLine
 from .base import Base
 
 class OrderStatus(Enum):
-    PENDING = "Pending"      # After payment, waiting for processing
-    PROCESSING = "Processing"
-    FULFILLED = "Fulfilled"
-    CANCELLED = "Cancelled"
-    DELIVERED = "Delivered"
+    PENDING = "Pending"      # Initial state when order is created
+    SUBMITTED = "Submitted"  # After initial payment is made
+    PROCESSING = "Processing"  # Staff started processing the order
+    FULFILLED = "Fulfilled"  # The order is completed
+    CANCELLED = "Cancelled"  # Customer canceled the order
+    DELIVERED = "Delivered"  # The order has been sended to the customer
 
 class DeliveryMethod(Enum):
     PICKUP = "Pickup"
@@ -67,20 +68,28 @@ class Order(Base):
 
     def cancelOrder(self):
         """Cancel the order if possible"""
-        if self.orderStatus in [OrderStatus.UNPAID.value, OrderStatus.PENDING.value]:
-            # If order was paid (was in PENDING status), process refund
-            if self.orderStatus == OrderStatus.PENDING.value:
-                # Calculate total paid amount
-                total_paid = sum(payment.paymentAmount for payment in self.payments)
-                if total_paid > 0:
-                    # Add refund to customer balance
-                    self.customer.custBalance += total_paid
-                    return True, f"Order cancelled. ${total_paid:.2f} has been refunded to your balance."
-
-            # If order was unpaid, just cancel
+        if self.orderStatus == OrderStatus.PENDING.value:
+            # If order is pending (no payment made), just cancel
             self.orderStatus = OrderStatus.CANCELLED.value
             return True, "Order cancelled successfully."
-        return False, "Order cannot be cancelled at this stage."
+
+        elif self.orderStatus == OrderStatus.SUBMITTED.value:
+            # If order was submitted (was paid), process refund
+            total_paid = sum(payment.paymentAmount for payment in self.payments)
+            if total_paid > 0:
+                # Add refund to customer balance
+                self.customer.custBalance += total_paid
+                self.orderStatus = OrderStatus.CANCELLED.value
+                return True, f"Order cancelled. ${total_paid:.2f} has been refunded to your balance."
+            else:
+                self.orderStatus = OrderStatus.CANCELLED.value
+                return True, "Order cancelled successfully."
+
+        elif self.orderStatus == OrderStatus.PROCESSING.value:
+            return False, "Order cannot be cancelled as it is already being processed. Please contact our staff directly."
+
+        else:
+            return False, "Order cannot be cancelled at this stage."
 
     def updateOrderStatus(self, newStatus):
         """Update order status"""
