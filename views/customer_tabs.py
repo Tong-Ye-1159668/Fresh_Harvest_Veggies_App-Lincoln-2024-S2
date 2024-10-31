@@ -97,27 +97,27 @@ class CustomerOrderTab(ttk.Frame):
 
         self.deliveryMethod = tk.StringVar(value="PICKUP")
         ttk.Radiobutton(deliveryFrame, text="Pickup",
-                       variable=self.deliveryMethod,
-                       value="PICKUP",
-                       command=self.updateDeliveryFields).pack(padx=5, pady=2)
+                        variable=self.deliveryMethod,
+                        value="PICKUP",
+                        command=self.updateDeliveryFields).pack(padx=5, pady=2)
         ttk.Radiobutton(deliveryFrame, text="Delivery (+$10)",
-                       variable=self.deliveryMethod,
-                       value="DELIVERY",
-                       command=self.updateDeliveryFields).pack(padx=5, pady=2)
+                        variable=self.deliveryMethod,
+                        value="DELIVERY",
+                        command=self.updateDeliveryFields).pack(padx=5, pady=2)
 
         # Delivery details frame
         self.deliveryDetailsFrame = ttk.Frame(deliveryFrame)
         self.deliveryDetailsFrame.pack(fill=tk.X, padx=5, pady=5)
 
         ttk.Label(self.deliveryDetailsFrame, text="Delivery Address:").pack()
-        self.address = tk.StringVar()
+        self.address = tk.StringVar(value=self.customer.custAddress)  # Pre-fill with customer's address
         ttk.Entry(self.deliveryDetailsFrame, textvariable=self.address, width=40).pack(pady=2)
 
         ttk.Label(self.deliveryDetailsFrame, text="Distance (km):").pack()
         self.distance = tk.StringVar()
         ttk.Entry(self.deliveryDetailsFrame, textvariable=self.distance, width=10).pack(pady=2)
         ttk.Label(self.deliveryDetailsFrame,
-                 text="*Delivery available within 20km radius only").pack()
+                  text="*Delivery available within 20km radius only").pack()
 
         # Initially hide delivery details
         self.deliveryDetailsFrame.pack_forget()
@@ -1013,8 +1013,14 @@ class PaymentDialog(tk.Toplevel):
                 # Update customer balance
                 customer.custBalance += amount
 
-                # Update order status to PROCESSING after payment
-                order.orderStatus = OrderStatus.PROCESSING.value
+                # Check if this payment completes the order total
+                remaining = order.calcRemainingBalance() - amount
+                if remaining <= 0:
+                    # If paid in full, update to SUBMITTED status
+                    order.orderStatus = OrderStatus.SUBMITTED.value
+                else:
+                    # If partially paid, keep as PENDING
+                    order.orderStatus = OrderStatus.PENDING.value
 
                 session.commit()
 
