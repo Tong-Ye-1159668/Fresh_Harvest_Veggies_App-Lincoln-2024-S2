@@ -10,9 +10,10 @@ class OrderStatus(Enum):
     PENDING = "Pending"      # Initial state when order is created
     SUBMITTED = "Submitted"  # After initial payment is made
     PROCESSING = "Processing"  # Staff started processing the order
-    FULFILLED = "Fulfilled"  # The order is completed
-    CANCELLED = "Cancelled"  # Customer canceled the order
+    READY_TO_PICKUP = "Ready To Pick Up"  # Pickup order is ready
     DELIVERED = "Delivered"  # The order has been sended to the customer
+    COMPLETED = "Completed"  # Final state after pickup/delivery
+    CANCELLED = "Cancelled"  # Customer canceled the order
 
 class DeliveryMethod(Enum):
     PICKUP = "Pickup"
