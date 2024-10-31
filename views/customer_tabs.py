@@ -813,9 +813,9 @@ class PaymentDialog(tk.Toplevel):
         ttk.Label(detailsFrame, text=f"Order Total: ${order.total:.2f}").pack()
 
         # Calculate remaining balance
-        remainingBalance = order.calcRemainingBalance()
+        remainingOrderBalance = order.calcRemainingBalance()
         ttk.Label(detailsFrame,
-                  text=f"Remaining Payment: ${remainingBalance:.2f}",
+                  text=f"Remaining Payment: ${remainingOrderBalance:.2f}",
                   font=('Helvetica', 10, 'bold')).pack()
 
         # Add customer balance display
@@ -842,8 +842,12 @@ class PaymentDialog(tk.Toplevel):
         amountFrame.pack(fill=tk.X, padx=10, pady=5)
 
         ttk.Label(amountFrame, text="Amount:").pack()
-        self.amount = tk.StringVar(value=f"{remainingBalance:.2f}")
-        ttk.Entry(amountFrame, textvariable=self.amount).pack(pady=5)
+        self.amount = tk.StringVar(value=f"{remainingOrderBalance:.2f}")
+        self.amountEntry = ttk.Entry(amountFrame, textvariable=self.amount)
+        self.amountEntry.pack(pady=5)
+
+        # Add validation for amount entry
+        self.amountEntry.bind('<KeyRelease>', self.validateAmount)
 
         # Credit Card details frame
         self.creditFrame = ttk.LabelFrame(self, text="Credit Card Details")
@@ -895,6 +899,34 @@ class PaymentDialog(tk.Toplevel):
         self.creditCardEntry.bind('<KeyRelease>', lambda e: self.validateCardNumber(self.creditCardNumber))
         self.debitCardEntry.bind('<KeyRelease>', lambda e: self.validateCardNumber(self.debitCardNumber))
 
+    def validateAmount(self, event):
+        """Validate amount to allow only digits and two decimal places"""
+        value = self.amount.get().strip()
+
+        # If empty, allow it
+        if not value:
+            return
+
+        # Remove all non-digit characters except decimal point
+        filtered = ''.join(char for char in value if char.isdigit() or char == '.')
+
+        # Handle multiple decimal points
+        decimal_points = filtered.count('.')
+        if decimal_points > 1:
+            # Keep only the first decimal point
+            parts = filtered.split('.')
+            filtered = parts[0] + '.' + ''.join(parts[1:])
+
+        # Handle decimal places
+        if '.' in filtered:
+            main, decimal = filtered.split('.')
+            # Limit to 2 decimal places
+            filtered = main + '.' + decimal[:2]
+
+        # Update the entry if value has changed
+        if filtered != value:
+            self.amount.set(filtered)
+
     def validateCardNumber(self, cardVar):
         """Validate card number to only allow digits"""
         value = cardVar.get()
@@ -915,9 +947,28 @@ class PaymentDialog(tk.Toplevel):
         """Validate input fields based on payment method"""
         try:
             # Validate amount
-            amount = float(self.amount.get())
+            amount_str = self.amount.get().strip()
+            if not amount_str:
+                raise ValueError("Please enter payment amount")
+
+            try:
+                amount = float(amount_str)
+            except ValueError:
+                raise ValueError("Invalid payment amount format")
+
             if amount <= 0:
                 raise ValueError("Payment amount must be greater than 0")
+
+            # Validate amount format
+            if '.' in amount_str:
+                _, decimals = amount_str.split('.')
+                if len(decimals) > 2:
+                    raise ValueError("Amount can only have up to 2 decimal places")
+
+            # Check if amount exceeds remaining balance
+            remaining_balance = self.order.calcRemainingBalance()
+            if amount > remaining_balance:
+                raise ValueError(f"Amount cannot exceed remaining balance (${remaining_balance:.2f})")
 
             if self.paymentMethod.get() == "credit":
                 # Validate credit card fields
@@ -1002,7 +1053,7 @@ class PaymentDialog(tk.Toplevel):
 
             with Session(self.engine) as session:
                 order = session.merge(self.order)
-                customer = order.customer
+                total_paid = sum(payment.paymentAmount for payment in order.payments)  # Get previous payments first
 
                 # Create payment based on method
                 if self.paymentMethod.get() == "credit":
@@ -1021,28 +1072,26 @@ class PaymentDialog(tk.Toplevel):
                         bankName=self.bankName.get().strip()
                     )
 
+                # Add new payment to order
                 payment.order = order
                 session.add(payment)
 
-                # Update customer balance
-                customer.custBalance += amount
+                # Calculate total including current payment
+                total_paid_after = total_paid + amount
 
-                # Check if this payment completes the order total
-                remaining = order.calcRemainingBalance() - amount
-                if remaining <= 0:
-                    # If paid in full, update to SUBMITTED status
+                # Update order status based on payment
+                if total_paid_after >= order.total:
                     order.orderStatus = OrderStatus.SUBMITTED.value
+                    status_msg = "Order status updated to Submitted"
                 else:
-                    # If partially paid, keep as PENDING
                     order.orderStatus = OrderStatus.PENDING.value
+                    remaining = order.total - total_paid_after
+                    status_msg = f"Order remains Pending (${remaining:.2f} remaining)"
 
                 session.commit()
 
-                # Update success message to reflect the order status
-                status_msg = "Order status updated to Submitted" if remaining <= 0 else "Order remains in Pending status"
                 messagebox.showinfo("Success",
                                     f"Payment of ${amount:.2f} processed successfully\n" +
-                                    f"New balance: ${customer.custBalance:.2f}\n" +
                                     status_msg)
                 self.destroy()
 
