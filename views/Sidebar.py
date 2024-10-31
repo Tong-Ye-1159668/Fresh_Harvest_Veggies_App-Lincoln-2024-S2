@@ -10,7 +10,7 @@ class Sidebar:
 
         # Colors
         self.colors = {
-            'sidebar_bg': '#283662',
+            'sidebar_bg': '#184e77',
             'highlight': '#6fffe9',
             'text': 'white',
             'hover': '#4361ee',
