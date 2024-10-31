@@ -182,7 +182,59 @@ class StaffOrdersTab(ttk.Frame):
             try:
                 with Session(self.engine) as session:
                     order = session.query(Order).filter_by(orderNumber=orderNum).first()
-                    order.orderStatus = dialog.result.value
+                    new_status = dialog.result.value
+                    current_status = order.orderStatus
+
+                    # Check pending order first
+                    if current_status == OrderStatus.PENDING.value:
+                        messagebox.showerror("Error", "You need to wait for the customer to pay this order")
+                        return
+
+                    # Check if trying to mark a pickup order as delivered
+                    if (order.deliveryMethod == DeliveryMethod.PICKUP and
+                            new_status == OrderStatus.DELIVERED.value):
+                        messagebox.showerror("Error", "Pick Up Order cannot be delivered")
+                        return
+
+                    # Check if delivery order is being marked as ready to pickup
+                    if (order.deliveryMethod == DeliveryMethod.DELIVERY and
+                            new_status == OrderStatus.READY_TO_PICKUP.value):
+                        messagebox.showerror("Error", "Only Pick Up Order can be Ready To Pick Up")
+                        return
+
+                    # Check transitions to completed status
+                    if (new_status == OrderStatus.COMPLETED.value and
+                            current_status not in [OrderStatus.READY_TO_PICKUP.value, OrderStatus.DELIVERED.value]):
+                        messagebox.showerror("Error",
+                                             "Order must be Ready To Pick Up or Delivered before marking as Completed")
+                        return
+
+                    # Status transition validations
+                    if current_status == OrderStatus.SUBMITTED.value:
+                        if new_status == OrderStatus.PENDING.value:
+                            messagebox.showerror("Error", "Submitted order cannot be changed to Pending")
+                            return
+
+                    elif current_status == OrderStatus.PROCESSING.value:
+                        if new_status in [OrderStatus.SUBMITTED.value, OrderStatus.PENDING.value]:
+                            messagebox.showerror("Error", "Processing order cannot be changed to Submitted or Pending")
+                            return
+
+                    elif current_status == OrderStatus.READY_TO_PICKUP.value:
+                        if new_status != OrderStatus.COMPLETED.value:
+                            messagebox.showerror("Error", "Ready To Pick Up order can only be changed to Completed")
+                            return
+
+                    elif current_status == OrderStatus.DELIVERED.value:
+                        if new_status != OrderStatus.COMPLETED.value:
+                            messagebox.showerror("Error", "Delivered order can only be changed to Completed")
+                            return
+
+                    elif current_status == OrderStatus.COMPLETED.value:
+                        messagebox.showerror("Error", "Completed order status cannot be changed")
+                        return
+
+                    order.orderStatus = new_status
                     session.commit()
                     self.loadOrders()
                     messagebox.showinfo("Success", "Order status updated successfully")
