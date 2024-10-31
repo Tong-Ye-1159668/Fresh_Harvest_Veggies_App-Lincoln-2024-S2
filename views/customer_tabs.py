@@ -190,19 +190,34 @@ class CustomerOrderTab(ttk.Frame):
         self.wait_window(dialog)
 
         if dialog.result:
-            # Add box to cart with selected veggies
-            quantity = self.quantity.get()
-            price = float(PremadeBox.getBoxPrice(box_size).replace('$', ''))
-            total_price = price * quantity
+            try:
+                # Get quantity and validate it's an integer
+                quantity = int(self.quantity.get())
+                if quantity <= 0:
+                    messagebox.showerror("Error", "Quantity must be greater than 0")
+                    return
 
-            # Create cart entry with veggie list
-            veggie_list = ", ".join(dialog.result)
-            self.cartTree.insert('', 'end', values=(
-                f"{item_data[0]} ({veggie_list})",
-                quantity,
-                f"${total_price:.2f}"
-            ))
-            self.updateTotal()
+                # Extract base price for the box size
+                base_price = float(PremadeBox.getBoxPrice(box_size).replace('$', ''))
+                total_price = base_price * quantity
+
+                # Format selected veggies for display
+                selected_veggies = ", ".join(dialog.result)
+
+                # Add to cart with selected veggies
+                self.cartTree.insert('', 'end', values=(
+                    f"Premade Box {box_size} ({selected_veggies})",  # Name and contents
+                    quantity,  # Quantity
+                    f"${total_price:.2f}"  # Total price
+                ))
+
+                # Update cart total
+                self.updateTotal()
+
+            except ValueError:
+                messagebox.showerror("Error", "Please enter a valid quantity")
+            except Exception as e:
+                messagebox.showerror("Error", f"Error adding box to cart: {str(e)}")
 
     # Add method to switch quantity input type
     def updateQuantityInput(self):
