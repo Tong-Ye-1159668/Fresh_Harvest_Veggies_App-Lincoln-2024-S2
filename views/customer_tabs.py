@@ -1009,19 +1009,16 @@ class PaymentDialog(tk.Toplevel):
                 if len(decimals) > 2:
                     raise ValueError("Amount can only have up to 2 decimal places")
 
-            # Check if amount exceeds remaining balance
-            remaining_balance = self.order.calcRemainingBalance()
-            if amount > remaining_balance:
-                raise ValueError(f"Amount cannot exceed remaining balance (${remaining_balance:.2f})")
-
+            # For balance payment, check if sufficient balance available
             if self.paymentMethod.get() == "balance":
-                # Check if amount exceeds available balance
                 if amount > self.order.customer.custBalance:
-                    raise ValueError(f"Amount cannot exceed available balance (${self.order.customer.custBalance:.2f})")
-            elif self.paymentMethod.get() == "credit":
+                    raise ValueError(f"Insufficient balance (Available: ${self.order.customer.custBalance:.2f})")
+
+            # Note: Removed the check that prevents paying more than remaining balance
+
+            if self.paymentMethod.get() == "credit":
                 # Validate credit card fields
                 card_number = self.creditCardNumber.get().strip()
-                # Validate card number
                 if not card_number:
                     raise ValueError("Please enter credit card number")
                 if not card_number.isdigit():
@@ -1058,20 +1055,17 @@ class PaymentDialog(tk.Toplevel):
                         raise ValueError("Card has expired")
 
                 except ValueError as e:
-                    # If error message is from our validation, use it
                     if str(e) in ["Invalid expiry month", "Card has expired"]:
                         raise
-                    # Otherwise, it's a format error
                     raise ValueError("Invalid expiry date format. Use MM/YY")
 
                 # Validate card type is selected
                 if not self.cardType.get():
                     raise ValueError("Please select card type")
 
-            else:  # Debit card
+            elif self.paymentMethod.get() == "debit":
                 # Validate debit card fields
                 card_number = self.debitCardNumber.get().strip()
-                # Validate card number
                 if not card_number:
                     raise ValueError("Please enter debit card number")
                 if not card_number.isdigit():
@@ -1092,62 +1086,67 @@ class PaymentDialog(tk.Toplevel):
             return False
 
     def processPayment(self):
-        """Process the payment"""
+        """Process the payment with balance top-up for excess amounts"""
         if not self.validateFields():
             return
 
         try:
             amount = float(self.amount.get())
-
             with Session(self.engine) as session:
                 order = session.merge(self.order)
-                total_paid = sum(payment.paymentAmount for payment in order.payments)
+                remaining_balance = order.calcRemainingBalance()
+                excess_amount = max(0, amount - remaining_balance)
+                payment_amount = min(amount, remaining_balance)
 
                 # Create payment based on method
                 if self.paymentMethod.get() == "balance":
                     # Deduct from customer balance
-                    order.customer.custBalance -= amount
+                    if order.customer.custBalance < amount:
+                        messagebox.showerror("Error", "Insufficient balance")
+                        return
+                    order.customer.custBalance -= payment_amount
                     payment = Payment(
-                        paymentAmount=amount,
+                        paymentAmount=payment_amount,
                         paymentDate=datetime.now()
                     )
                 elif self.paymentMethod.get() == "credit":
                     payment = CreditCardPayment(
-                        paymentAmount=amount,
+                        paymentAmount=payment_amount,
                         paymentDate=datetime.now(),
                         cardNumber=self.creditCardNumber.get().strip(),
                         cardExpiryDate=datetime.strptime(self.expiryDate.get().strip(), "%m/%y"),
                         cardType=self.cardType.get()
                     )
-                else:
+                else:  # debit card
                     payment = DebitCardPayment(
-                        paymentAmount=amount,
+                        paymentAmount=payment_amount,
                         paymentDate=datetime.now(),
                         debitCardNumber=self.debitCardNumber.get().strip(),
                         bankName=self.bankName.get().strip()
                     )
 
-                # Add new payment to order
+                # Add payment to order
                 payment.order = order
                 session.add(payment)
 
-                # Calculate total including current payment
-                total_paid_after = total_paid + amount
+                # Handle excess amount as balance top-up
+                if excess_amount > 0:
+                    order.customer.custBalance += excess_amount
 
-                # Update order status based on payment
-                if total_paid_after >= order.total:
-                    order.orderStatus = OrderStatus.SUBMITTED.value
-                    status_msg = "Order status updated to Submitted"
-                else:
-                    order.orderStatus = OrderStatus.PENDING.value
-                    remaining = order.total - total_paid_after
-                    status_msg = f"Order remains Pending (${remaining:.2f} remaining)"
-
+                # Update order status
+                order.orderStatus = OrderStatus.SUBMITTED.value
                 session.commit()
 
-                messagebox.showinfo("Success",
-                                    f"Payment of ${amount:.2f} processed successfully\n" +
-                                    status_msg)
+                # Prepare success message
+                message = f"Payment processed successfully:\n\n"
+                message += f"Order payment: ${payment_amount:.2f}\n"
+                if excess_amount > 0:
+                    message += f"Added to balance: ${excess_amount:.2f}\n"
+                message += f"Order status updated to Submitted\n"
+                if excess_amount > 0:
+                    message += f"\nNew balance: ${order.customer.custBalance:.2f}"
+
+                messagebox.showinfo("Success", message)
                 self.destroy()
 
         except ValueError as e:
@@ -1299,17 +1298,80 @@ class CustomerProfileTab(ttk.Frame):
         self.customer = customer
 
         # Create profile frame
-        profileFrame = ttk.LabelFrame(self, text="My Profile")
-        profileFrame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        self.profileFrame = ttk.LabelFrame(self, text="My Profile")
+        self.profileFrame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
-        # Customer details
-        ttk.Label(profileFrame, text=f"Name: {customer.firstName} {customer.lastName}").pack(pady=2)
-        ttk.Label(profileFrame, text=f"Username: {customer.username}").pack(pady=2)
-        ttk.Label(profileFrame, text=f"Address: {customer.custAddress}").pack(pady=2)
-        ttk.Label(profileFrame, text=f"Current Balance: ${customer.custBalance:.2f}").pack(pady=2)
-        ttk.Label(profileFrame, text=f"Maximum Owing: ${customer.maxOwing:.2f}").pack(pady=2)
+        # Create labels with instance variables so we can update them
+        self.nameLabel = ttk.Label(self.profileFrame)
+        self.nameLabel.pack(pady=2)
 
+        self.usernameLabel = ttk.Label(self.profileFrame)
+        self.usernameLabel.pack(pady=2)
+
+        self.addressLabel = ttk.Label(self.profileFrame)
+        self.addressLabel.pack(pady=2)
+
+        self.balanceLabel = ttk.Label(self.profileFrame)
+        self.balanceLabel.pack(pady=2)
+
+        self.maxOwingLabel = ttk.Label(self.profileFrame)
+        self.maxOwingLabel.pack(pady=2)
+
+        # For corporate customers
         if customer.type == "Corporate Customer":
-            ttk.Label(profileFrame, text=f"Discount Rate: {customer.discountRate * 100}%").pack(pady=2)
-            ttk.Label(profileFrame, text=f"Credit Limit: ${customer.maxCredit:.2f}").pack(pady=2)
-            ttk.Label(profileFrame, text=f"Minimum Balance: ${customer.minBalance:.2f}").pack(pady=2)
+            self.discountLabel = ttk.Label(self.profileFrame)
+            self.discountLabel.pack(pady=2)
+
+            self.creditLimitLabel = ttk.Label(self.profileFrame)
+            self.creditLimitLabel.pack(pady=2)
+
+            self.minBalanceLabel = ttk.Label(self.profileFrame)
+            self.minBalanceLabel.pack(pady=2)
+
+        # Add refresh button
+        buttonFrame = ttk.Frame(self)
+        buttonFrame.pack(fill=tk.X, padx=10, pady=5)
+
+        ttk.Button(buttonFrame,
+                   text="Refresh",
+                   command=self.refreshProfile,
+                   width=20).pack(pady=5)
+
+        # Load initial data
+        self.refreshProfile()
+
+    def refreshProfile(self):
+        """Refresh profile information"""
+        try:
+            with Session(self.engine) as session:
+                # Get fresh customer data from database
+                customer = session.query(Customer).get(self.customer.id)
+
+                # Update the display
+                self.nameLabel.config(text=f"Name: {customer.firstName} {customer.lastName}")
+                self.usernameLabel.config(text=f"Username: {customer.username}")
+                self.addressLabel.config(text=f"Address: {customer.custAddress}")
+
+                # Set balance label color based on amount
+                balance_color = 'green' if customer.custBalance > 0 else 'red' if customer.custBalance < 0 else 'black'
+                self.balanceLabel.config(
+                    text=f"Current Balance: ${customer.custBalance:.2f}",
+                    foreground=balance_color
+                )
+
+                self.maxOwingLabel.config(text=f"Maximum Owing: ${customer.maxOwing:.2f}")
+
+                # Update corporate customer specific information
+                if customer.type == "Corporate Customer":
+                    self.discountLabel.config(text=f"Discount Rate: {customer.discountRate * 100}%")
+                    self.creditLimitLabel.config(text=f"Credit Limit: ${customer.maxCredit:.2f}")
+                    self.minBalanceLabel.config(text=f"Minimum Balance: ${customer.minBalance:.2f}")
+
+                # Update the stored customer reference
+                self.customer = customer
+
+                # Show success message (optional)
+                self.after(100, lambda: self.showRefreshMessage())
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to refresh profile: {str(e)}")
