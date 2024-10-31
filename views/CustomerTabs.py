@@ -1153,8 +1153,14 @@ class PaymentDialog(tk.Toplevel):
                 if excess_amount > 0:
                     order.customer.custBalance += excess_amount
 
-                # Update order status
-                order.orderStatus = OrderStatus.SUBMITTED.value
+                # Update order status based on payment amount
+                new_remaining = order.calcRemainingBalance() - payment_amount
+                if new_remaining <= 0:
+                    order.orderStatus = OrderStatus.SUBMITTED.value
+                else:
+                    # Keep as PENDING for partial payments
+                    order.orderStatus = OrderStatus.PENDING.value
+
                 session.commit()
 
                 # Prepare success message
@@ -1162,9 +1168,11 @@ class PaymentDialog(tk.Toplevel):
                 message += f"Order payment: ${payment_amount:.2f}\n"
                 if excess_amount > 0:
                     message += f"Added to balance: ${excess_amount:.2f}\n"
-                message += f"Order status updated to Submitted\n"
+                message += f"Order status: {order.orderStatus}\n"
                 if excess_amount > 0:
                     message += f"\nNew balance: ${order.customer.custBalance:.2f}"
+                if new_remaining > 0:
+                    message += f"\nRemaining to pay: ${new_remaining:.2f}"
 
                 messagebox.showinfo("Success", message)
                 self.destroy()
