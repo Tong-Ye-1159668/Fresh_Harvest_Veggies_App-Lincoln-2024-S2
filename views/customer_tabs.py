@@ -654,6 +654,7 @@ class CustomerCurrentOrdersTab(ttk.Frame):
                 Order.orderCustomer == self.customer.id,
                 Order.orderStatus.in_([
                     OrderStatus.PENDING.value,
+                    OrderStatus.SUBMITTED.value,
                     OrderStatus.PROCESSING.value
                 ])
             ).all()
@@ -1024,15 +1025,19 @@ class PaymentDialog(tk.Toplevel):
 
                 session.commit()
 
+                # Update success message to reflect the order status
+                status_msg = "Order status updated to Submitted" if remaining <= 0 else "Order remains in Pending status"
                 messagebox.showinfo("Success",
                                     f"Payment of ${amount:.2f} processed successfully\n" +
-                                    f"New balance: ${customer.custBalance:.2f}")
+                                    f"New balance: ${customer.custBalance:.2f}\n" +
+                                    status_msg)
                 self.destroy()
 
         except ValueError as e:
             messagebox.showerror("Error", str(e))
         except Exception as e:
             messagebox.showerror("Error", f"Payment failed: {str(e)}")
+
 
 class CustomerPreviousOrdersTab(ttk.Frame):
     def __init__(self, parent, engine, customer):
@@ -1049,9 +1054,18 @@ class CustomerPreviousOrdersTab(ttk.Frame):
 
         self.orderTree.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        # Buttons
-        ttk.Button(self, text="View Details",
-                   command=self.viewOrderDetails).pack(pady=5)
+        # Buttons frame
+        buttonFrame = ttk.Frame(self)
+        buttonFrame.pack(fill=tk.X, padx=5, pady=5)
+
+        # Add both View Details and Refresh buttons
+        ttk.Button(buttonFrame,
+                   text="View Details",
+                   command=self.viewOrderDetails).pack(side=tk.LEFT, padx=5)
+
+        ttk.Button(buttonFrame,
+                   text="Refresh",
+                   command=self.loadOrders).pack(side=tk.LEFT, padx=5)
 
         # Load initial data
         self.loadOrders()
