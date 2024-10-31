@@ -560,16 +560,20 @@ class CustomerOrderTab(ttk.Frame):
                 order.subtotal = sum(line.lineTotal for line in order.orderLines)
                 order.total = order.subtotal + (10.0 if self.deliveryMethod.get() == "DELIVERY" else 0.0)
 
-                # Update customer balance
-                customer.custBalance -= order.total
-
                 # Save to database
                 session.add(order)
                 session.commit()
 
-                messagebox.showinfo("Success",
-                                    f"Order placed successfully!\nYour new balance: ${customer.custBalance:.2f}")
+                messagebox.showinfo("Success", "Order placed successfully!"
+                                               "\nPlease go to Current Orders tab to make a payment.")
                 self.clearCart()
+
+        except ValueError as e:
+            messagebox.showerror("Error", str(e))
+            session.rollback()
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to place order: {str(e)}")
+            session.rollback()
 
         except ValueError as e:
             messagebox.showerror("Error", str(e))
