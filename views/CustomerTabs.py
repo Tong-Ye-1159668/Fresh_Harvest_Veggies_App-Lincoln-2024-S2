@@ -1241,9 +1241,10 @@ class CustomerPreviousOrdersTab(ttk.Frame):
             orders = session.query(Order).filter(
                 Order.orderCustomer == self.customer.id,
                 Order.orderStatus.in_([
-                    OrderStatus.FULFILLED.value,
+                    OrderStatus.READY_TO_PICKUP.value,
                     OrderStatus.CANCELLED.value,
-                    OrderStatus.DELIVERED.value
+                    OrderStatus.DELIVERED.value,
+                    OrderStatus.COMPLETED.value
                 ])
             ).order_by(Order.orderDate.desc()).all()
 
