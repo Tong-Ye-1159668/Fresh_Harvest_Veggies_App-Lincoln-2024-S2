@@ -254,18 +254,19 @@ class CustomerOrderTab(ttk.Frame):
             self.handleCustomBox(item_data)
             return
 
-        # For other items (veggies)
         try:
-            if isinstance(self.currentQuantityWidget, ttk.Entry):
-                # For weighted items
+            if item_data[1] == 'Weight':  # For weighted veggies
                 quantity = float(self.quantity.get())
-            else:
-                # For other items
+                # Check minimum weight
+                if quantity < 0.01:
+                    messagebox.showerror("Error", "Minimum weight must be 0.01 kg")
+                    return
+            else:  # For other items
                 quantity = int(self.quantity.get())
+                if quantity <= 0:
+                    messagebox.showerror("Error", "Quantity must be greater than 0")
+                    return
 
-            if quantity <= 0:
-                messagebox.showerror("Error", "Quantity must be greater than 0")
-                return
         except ValueError:
             messagebox.showerror("Error", "Please enter a valid quantity")
             return
@@ -279,9 +280,11 @@ class CustomerOrderTab(ttk.Frame):
             base_price = float(price_parts[0])
 
             # Calculate total price based on item type
-            if '/kg' in price_str:
+            if item_data[1] == 'Weight':
                 # For weighted items, quantity is in kg
                 total_price = base_price * quantity
+                # Format quantity to 2 decimal places for display
+                quantity = f"{quantity:.2f}"
             else:
                 # For other items (pack, unit), simple multiplication
                 total_price = base_price * quantity
@@ -289,7 +292,7 @@ class CustomerOrderTab(ttk.Frame):
             # Add to cart tree
             self.cartTree.insert('', 'end', values=(
                 item_data[0],  # Name
-                quantity,  # Quantity
+                quantity,  # Quantity (formatted for weight)
                 f"${total_price:.2f}"  # Total price
             ))
 
@@ -633,7 +636,7 @@ class CustomerCurrentOrdersTab(ttk.Frame):
                 return
 
             # Check if order is already in PROCESSING status
-            if order.orderStatus == OrderStatus.PROCESSING.value:
+            if order.orderStatus in [OrderStatus.PROCESSING.value, OrderStatus.SUBMITTED.value]:
                 messagebox.showinfo("Information", "You have already paid for this order.")
                 return
 
@@ -807,8 +810,14 @@ class PaymentDialog(tk.Toplevel):
 
         # Calculate remaining balance
         remainingBalance = order.calcRemainingBalance()
-        ttk.Label(detailsFrame, text=f"Remaining Balance: ${remainingBalance:.2f}",
+        ttk.Label(detailsFrame,
+                  text=f"Remaining Payment: ${remainingBalance:.2f}",
                   font=('Helvetica', 10, 'bold')).pack()
+
+        # Add customer balance display
+        ttk.Label(detailsFrame,
+                  text=f"Current Balance: ${order.customer.custBalance:.2f}",
+                  font=('Helvetica', 10)).pack()
 
         # Payment method frame
         methodFrame = ttk.LabelFrame(self, text="Payment Method")
