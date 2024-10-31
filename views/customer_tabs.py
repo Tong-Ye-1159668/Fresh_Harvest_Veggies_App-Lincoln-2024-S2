@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 
 from models import PremadeBox, UnitPriceVeggie, PackVeggie, WeightedVeggie, Item, Order, DebitCardPayment, \
-    CreditCardPayment, Customer, OrderLine, Veggie
+    CreditCardPayment, Customer, OrderLine, Veggie, Payment
 from models.Order import DeliveryMethod, Order,OrderStatus
 from views.box_customise_dialog import CustomBoxDialog
 
@@ -598,8 +598,8 @@ class CustomerCurrentOrdersTab(ttk.Frame):
         self.engine = engine
         self.customer = customer
 
-        # Create orders treeview
-        columns = ('Order No', 'Date', 'Status', 'Total', 'Delivery')
+        # Update columns to include Remaining Payment
+        columns = ('Order No', 'Date', 'Status', 'Total', 'Remaining', 'Delivery')  # Added 'Remaining'
         self.orderTree = ttk.Treeview(self, columns=columns, show='headings')
 
         # Setup column headings
@@ -667,11 +667,13 @@ class CustomerCurrentOrdersTab(ttk.Frame):
             ).all()
 
             for order in orders:
+                remaining_payment = order.calcRemainingBalance()  # Calculate remaining payment
                 self.orderTree.insert('', 'end', values=(
                     order.orderNumber,
                     order.orderDate.strftime('%Y-%m-%d'),
                     order.orderStatus,
                     f"${order.total:.2f}",
+                    f"${remaining_payment:.2f}",  # Add remaining payment
                     "Yes" if order.deliveryMethod == DeliveryMethod.DELIVERY else "No"
                 ))
 
@@ -799,7 +801,7 @@ class PaymentDialog(tk.Toplevel):
         self.order = order
 
         self.title("Make Payment")
-        self.geometry("400x500")
+        self.geometry("400x650")
 
         # Make dialog modal
         self.transient(parent)
@@ -818,10 +820,12 @@ class PaymentDialog(tk.Toplevel):
                   text=f"Remaining Payment: ${remainingOrderBalance:.2f}",
                   font=('Helvetica', 10, 'bold')).pack()
 
-        # Add customer balance display
+        # Add customer balance display with different color if positive
+        balance_color = 'green' if order.customer.custBalance > 0 else 'black'
         ttk.Label(detailsFrame,
                   text=f"Current Balance: ${order.customer.custBalance:.2f}",
-                  font=('Helvetica', 10)).pack()
+                  font=('Helvetica', 10),
+                  foreground=balance_color).pack()
 
         # Payment method frame
         methodFrame = ttk.LabelFrame(self, text="Payment Method")
@@ -836,6 +840,17 @@ class PaymentDialog(tk.Toplevel):
                         variable=self.paymentMethod,
                         value="debit",
                         command=self.updateCardFields).pack(padx=5, pady=2)
+
+        # Pay with Balance option
+        useBalanceBtn = ttk.Radiobutton(methodFrame, text="Pay with Balance",
+                                        variable=self.paymentMethod,
+                                        value="balance",
+                                        command=self.updatePaymentFields)
+        useBalanceBtn.pack(padx=5, pady=2)
+
+        # Disable balance option if customer has no positive balance
+        if order.customer.custBalance <= 0:
+            useBalanceBtn.configure(state='disabled')
 
         # Payment amount frame
         amountFrame = ttk.LabelFrame(self, text="Payment Amount")
@@ -883,6 +898,13 @@ class PaymentDialog(tk.Toplevel):
         self.bankName = tk.StringVar()
         ttk.Entry(self.debitFrame, textvariable=self.bankName).pack(pady=2)
 
+        # Balance payment frame
+        self.balanceFrame = ttk.LabelFrame(self, text="Balance Payment Details")
+        self.balanceFrame.pack(fill=tk.X, padx=10, pady=5)
+
+        ttk.Label(self.balanceFrame,
+                  text=f"Available Balance: ${order.customer.custBalance:.2f}").pack()
+
         # Initially hide debit frame
         self.debitFrame.pack_forget()
 
@@ -898,6 +920,28 @@ class PaymentDialog(tk.Toplevel):
         # Add validation for card numbers
         self.creditCardEntry.bind('<KeyRelease>', lambda e: self.validateCardNumber(self.creditCardNumber))
         self.debitCardEntry.bind('<KeyRelease>', lambda e: self.validateCardNumber(self.debitCardNumber))
+
+    def updatePaymentFields(self):
+        """Show/hide appropriate payment fields based on payment method"""
+        if self.paymentMethod.get() == "credit":
+            self.creditFrame.pack(fill=tk.X, padx=10, pady=5)
+            self.debitFrame.pack_forget()
+            self.balanceFrame.pack_forget()
+        elif self.paymentMethod.get() == "debit":
+            self.debitFrame.pack(fill=tk.X, padx=10, pady=5)
+            self.creditFrame.pack_forget()
+            self.balanceFrame.pack_forget()
+        else:  # balance payment
+            self.balanceFrame.pack(fill=tk.X, padx=10, pady=5)
+            self.creditFrame.pack_forget()
+            self.debitFrame.pack_forget()
+            # Validate amount against available balance
+            try:
+                amount = float(self.amount.get())
+                if amount > self.order.customer.custBalance:
+                    self.amount.set(str(self.order.customer.custBalance))
+            except ValueError:
+                pass
 
     def validateAmount(self, event):
         """Validate amount to allow only digits and two decimal places"""
@@ -970,7 +1014,11 @@ class PaymentDialog(tk.Toplevel):
             if amount > remaining_balance:
                 raise ValueError(f"Amount cannot exceed remaining balance (${remaining_balance:.2f})")
 
-            if self.paymentMethod.get() == "credit":
+            if self.paymentMethod.get() == "balance":
+                # Check if amount exceeds available balance
+                if amount > self.order.customer.custBalance:
+                    raise ValueError(f"Amount cannot exceed available balance (${self.order.customer.custBalance:.2f})")
+            elif self.paymentMethod.get() == "credit":
                 # Validate credit card fields
                 card_number = self.creditCardNumber.get().strip()
                 # Validate card number
@@ -1053,10 +1101,17 @@ class PaymentDialog(tk.Toplevel):
 
             with Session(self.engine) as session:
                 order = session.merge(self.order)
-                total_paid = sum(payment.paymentAmount for payment in order.payments)  # Get previous payments first
+                total_paid = sum(payment.paymentAmount for payment in order.payments)
 
                 # Create payment based on method
-                if self.paymentMethod.get() == "credit":
+                if self.paymentMethod.get() == "balance":
+                    # Deduct from customer balance
+                    order.customer.custBalance -= amount
+                    payment = Payment(
+                        paymentAmount=amount,
+                        paymentDate=datetime.now()
+                    )
+                elif self.paymentMethod.get() == "credit":
                     payment = CreditCardPayment(
                         paymentAmount=amount,
                         paymentDate=datetime.now(),
