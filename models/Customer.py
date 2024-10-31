@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, ForeignKey
 from sqlalchemy.orm import relationship
+
 from .Person import Person
 
 class Customer(Person):
@@ -7,7 +8,7 @@ class Customer(Person):
 
     id = Column(Integer, ForeignKey('persons.id'), primary_key=True)
     custAddress = Column(String(255))
-    custBalance = Column(Integer, default=0)
+    custBalance = Column(Float, default=0)
     maxOwing = Column(Integer, default=100)
 
     __mapper_args__ = {
