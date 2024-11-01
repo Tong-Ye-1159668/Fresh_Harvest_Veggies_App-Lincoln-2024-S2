@@ -4,7 +4,7 @@ from .Sidebar import Sidebar
 from .CustomerTabs import CustomerOrderTab, CustomerCurrentOrdersTab, CustomerPreviousOrdersTab, CustomerProfileTab
 
 
-class CustomerView(tk.Frame):  # (or StaffView)
+class CustomerView(tk.Frame):
     def __init__(self, parent, engine, customer):
         super().__init__(parent)
         self.engine = engine

@@ -31,7 +31,7 @@ class LoginWindow(tk.Tk):
         # Load and display logo
         try:
             self.logo = tk.PhotoImage(file='static/logo.png')
-            self.logo = self.logo.subsample(3, 3)  # Adjust size as needed
+            self.logo = self.logo.subsample(3, 3)
             logoLabel = ttk.Label(logoFrame, image=self.logo)
             logoLabel.pack()
         except Exception as e:

@@ -47,7 +47,7 @@ class Sidebar:
         brandFrame = tk.Frame(self.sidebar, bg=self.colors['sidebar_bg'])
         brandFrame.place(relx=0, rely=0, relwidth=1, relheight=0.15)
 
-        # Store logo as a class attribute with correct relative path
+        # brand logo
         self.logo = tk.PhotoImage(file='static/logo.png')
         self.logo = self.logo.subsample(4, 4)
 
@@ -81,7 +81,7 @@ class Sidebar:
     def setupMenuItems(self):
         """Setup menu items based on user type"""
         menuFrame = tk.Frame(self.sidebar, bg=self.colors['sidebar_bg'])
-        menuFrame.place(relx=0, rely=0.15, relwidth=1, relheight=0.7)  # Reduced height to make room for logout
+        menuFrame.place(relx=0, rely=0.15, relwidth=1, relheight=0.7)
 
         if self.userType == "customer":
             self.setupCustomerMenu(menuFrame)
@@ -91,7 +91,7 @@ class Sidebar:
     def setupCustomerMenu(self, menuFrame):
         """Setup customer menu items"""
         menuItems = [
-            ("New Order", None, False),  # Changed highlight to False
+            ("New Order", None, False),
             ("Current Orders", None, False),
             ("Order History", None, False),
             ("My Profile", None, False)

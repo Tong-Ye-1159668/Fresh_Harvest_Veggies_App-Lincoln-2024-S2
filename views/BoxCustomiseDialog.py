@@ -81,7 +81,8 @@ class CustomBoxDialog(tk.Toplevel):
         with Session(self.engine) as session:
             veggies = session.query(Veggie).all()
             for veggie in veggies:
-                if hasattr(veggie, 'vegName'):  # Check if it's a veggie
+                # Check if it's a veggie
+                if hasattr(veggie, 'vegName'):
                     veggie_type = type(veggie).__name__.replace('Veggie', '')
                     self.availableTree.insert('', 'end',
                                               values=(veggie.vegName, veggie_type))
@@ -122,9 +123,11 @@ class CustomBoxDialog(tk.Toplevel):
         selected_items = []
         for item in self.selectedTree.get_children():
             values = self.selectedTree.item(item)['values']
-            selected_items.append(values[0])  # Store veggie names
+            # Store veggie names
+            selected_items.append(values[0])
 
-        min_veggies = 1  # Minimum veggies required
+        # Minimum veggies required
+        min_veggies = 1
         max_veggies = PremadeBox.getMaxVeggies(self.box_size)
 
         if len(selected_items) < min_veggies:

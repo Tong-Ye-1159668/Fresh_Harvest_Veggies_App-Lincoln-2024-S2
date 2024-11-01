@@ -43,12 +43,12 @@ class StaffView(tk.Frame):
         self.sidebar.addCommand("Manage Orders", lambda: self.showFrame('orders'))
         self.sidebar.addCommand("Manage Customers", lambda: self.showFrame('customers'))
         self.sidebar.addCommand("Generate Reports", lambda: self.showFrame('reports'))
-        self.sidebar.addCommand("View Inventory", lambda: self.showFrame('inventory'))  # Add this
+        self.sidebar.addCommand("View Inventory", lambda: self.showFrame('inventory'))
         self.sidebar.addCommand("Logout", self.parent.destroy)
 
     def showFrame(self, frameName):
         """Show selected frame and hide others"""
-        print(f"Switching to frame: {frameName}")  # Debug print
+        print(f"Switching to frame: {frameName}")
 
         # Hide all frames
         for frame in self.frames.values():
@@ -62,5 +62,5 @@ class StaffView(tk.Frame):
             self.frames[frameName].loadOrders()
         elif hasattr(self.frames[frameName], 'loadCustomers'):
             self.frames[frameName].loadCustomers()
-        elif hasattr(self.frames[frameName], 'loadItems'):  # Add this
+        elif hasattr(self.frames[frameName], 'loadItems'):
             self.frames[frameName].loadItems()
