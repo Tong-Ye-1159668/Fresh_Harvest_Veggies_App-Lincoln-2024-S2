@@ -14,7 +14,7 @@ class CorporateCustomer(Customer):
     }
 
     def __init__(self, firstName, lastName, username, password, custAddress, custBalance=0,
-                 discountRate=0.10, maxCredit=0, minBalance=0):
+                 discountRate=0.10, maxCredit=200, minBalance=10):
         super().__init__(firstName=firstName, lastName=lastName, username=username, password=password,
                          custAddress=custAddress, custBalance=custBalance)
         self.discountRate = discountRate
