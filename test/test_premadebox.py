@@ -57,7 +57,7 @@ def test_remove_veggie():
 
     assert box.removeVeggie(veggie1) == True
     assert len(box.veggies) == 1
-    assert box.removeVeggie(veggie1) == False 
+    assert box.removeVeggie(veggie1) == False
     assert box.removeVeggie(veggie2) == True
     assert len(box.veggies) == 0
 
