@@ -1138,20 +1138,31 @@ class PaymentDialog(tk.Toplevel):
             with Session(self.engine) as session:
                 order = session.merge(self.order)
                 remaining_balance = order.calcRemainingBalance()
-                excess_amount = max(0, amount - remaining_balance)
-                payment_amount = min(amount, remaining_balance)
+
+                # Calculate payment allocation
+                total_needed = remaining_balance
+                if total_needed <= 0:
+                    messagebox.showerror("Error", "Order is already fully paid")
+                    return
+
+                # Calculate how much of the payment goes to the order vs excess
+                payment_amount = min(amount, total_needed)
+                excess_amount = max(0, amount - total_needed)
 
                 # Create payment based on method
                 if self.paymentMethod.get() == "balance":
-                    # Deduct from customer balance
-                    if order.customer.custBalance < amount:
+                    # Validate sufficient balance
+                    if order.customer.custBalance < payment_amount:
                         messagebox.showerror("Error", "Insufficient balance")
                         return
+
+                    # Deduct payment from customer balance
                     order.customer.custBalance -= payment_amount
                     payment = Payment(
                         paymentAmount=payment_amount,
                         paymentDate=datetime.now()
                     )
+
                 elif self.paymentMethod.get() == "credit":
                     payment = CreditCardPayment(
                         paymentAmount=payment_amount,
@@ -1160,6 +1171,11 @@ class PaymentDialog(tk.Toplevel):
                         cardExpiryDate=datetime.strptime(self.expiryDate.get().strip(), "%m/%y"),
                         cardType=self.cardType.get()
                     )
+
+                    # Add excess to balance for credit card payment
+                    if excess_amount > 0:
+                        order.customer.custBalance += excess_amount
+
                 else:  # debit card
                     payment = DebitCardPayment(
                         paymentAmount=payment_amount,
@@ -1168,22 +1184,23 @@ class PaymentDialog(tk.Toplevel):
                         bankName=self.bankName.get().strip()
                     )
 
+                    # Add excess to balance for debit card payment
+                    if excess_amount > 0:
+                        order.customer.custBalance += excess_amount
+
                 # Add payment to order
                 payment.order = order
                 session.add(payment)
 
-                # Handle excess amount as balance top-up
-                if excess_amount > 0:
-                    order.customer.custBalance += excess_amount
-
-                # Update order status based on payment amount
-                new_remaining = order.calcRemainingBalance()
+                # Update order status based on remaining balance after payment
+                new_remaining = order.calcRemainingBalance() - payment_amount
                 if new_remaining <= 0:
                     order.orderStatus = OrderStatus.SUBMITTED.value
                 else:
                     # Keep as PENDING for partial payments
                     order.orderStatus = OrderStatus.PENDING.value
 
+                # Commit all changes
                 session.commit()
 
                 # Prepare success message
