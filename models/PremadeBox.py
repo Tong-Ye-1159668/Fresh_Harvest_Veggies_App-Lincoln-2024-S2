@@ -34,6 +34,7 @@ class PremadeBox(Item):
         self.boxSize = boxSize
         self.numbOfBoxes = numbOfBoxes
 
+    @staticmethod
     def getBoxPrice(size):
         """Get price for premade box by size"""
         boxPrices = {
@@ -43,6 +44,7 @@ class PremadeBox(Item):
         }
         return f"${boxPrices.get(size, 0.0)}"
 
+    @staticmethod
     def getMaxVeggies(size):
         """Get maximum number of veggies allowed for box size"""
         maxVeggies = {
