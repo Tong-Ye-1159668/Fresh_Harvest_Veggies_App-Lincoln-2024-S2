@@ -322,9 +322,9 @@ class CustomerOrderTab(ttk.Frame):
 
                 # Add to cart tree (do this before committing to ensure no database errors)
                 self.cartTree.insert('', 'end', values=(
-                    item_data[0],  # Name
-                    quantity_display,  # Quantity (formatted)
-                    f"${total_price:.2f}"  # Total price
+                    item_data[0],
+                    quantity_display,
+                    f"${total_price:.2f}"
                 ))
 
                 # Update stock in database
@@ -360,92 +360,6 @@ class CustomerOrderTab(ttk.Frame):
 
         self.cartTree.delete(selected)
         self.updateTotal()
-
-    def showCartSummary(self):
-        """Show a summary window for cart total"""
-        summaryWindow = tk.Toplevel(self)
-        summaryWindow.title("Cart Summary")
-        summaryWindow.geometry("400x300")
-
-        # Make window modal
-        summaryWindow.transient(self)
-        summaryWindow.grab_set()
-
-        # Center window
-        summaryWindow.update_idletasks()
-        width = summaryWindow.winfo_width()
-        height = summaryWindow.winfo_height()
-        x = (summaryWindow.winfo_screenwidth() // 2) - (width // 2)
-        y = (summaryWindow.winfo_screenheight() // 2) - (height // 2)
-        summaryWindow.geometry(f'{width}x{height}+{x}+{y}')
-
-        # Create content
-        ttk.Label(summaryWindow, text="Cart Summary",
-                  font=('Helvetica', 12, 'bold')).pack(pady=10)
-
-        # Cart items frame
-        cartFrame = ttk.LabelFrame(summaryWindow, text="Items in Cart")
-        cartFrame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
-
-        # Create Treeview for cart items
-        columns = ('Item', 'Quantity', 'Price')
-        cartSummaryTree = ttk.Treeview(cartFrame, columns=columns, show='headings', height=5)
-
-        for col in columns:
-            cartSummaryTree.heading(col, text=col)
-
-        # Add all items from cart
-        subtotal = 0
-        for item in self.cartTree.get_children():
-            values = self.cartTree.item(item)['values']
-            cartSummaryTree.insert('', 'end', values=values)
-            # Add to total (remove $ and convert to float)
-            subtotal += float(values[2].replace('$', ''))
-
-        cartSummaryTree.pack(fill=tk.BOTH, expand=True, pady=5)
-
-        # Total information
-        totalFrame = ttk.Frame(summaryWindow)
-        totalFrame.pack(fill=tk.X, padx=10, pady=5)
-
-        # Show subtotal
-        ttk.Label(totalFrame, text=f"Subtotal: ${subtotal:.2f}",
-                  font=('Helvetica', 10)).pack(pady=2)
-
-        # Show discount for corporate customers
-        if self.customer.type == "Corporate Customer":
-            discount_amount = subtotal * self.customer.discountRate
-            ttk.Label(totalFrame,
-                      text=f"Discount ({self.customer.discountRate * 100}%): -${discount_amount:.2f}",
-                      font=('Helvetica', 10)).pack(pady=2)
-
-            if self.deliveryMethod.get() == "DELIVERY":
-                ttk.Label(totalFrame, text="Delivery Fee: $10.00",
-                          font=('Helvetica', 10)).pack(pady=2)
-                ttk.Label(totalFrame,
-                          text=f"Total (after discount): ${(subtotal - discount_amount + 10):.2f}",
-                          font=('Helvetica', 10, 'bold')).pack(pady=2)
-            else:
-                ttk.Label(totalFrame,
-                          text=f"Total (after discount): ${(subtotal - discount_amount):.2f}",
-                          font=('Helvetica', 10, 'bold')).pack(pady=2)
-        else:
-            # Regular customer display
-            if self.deliveryMethod.get() == "DELIVERY":
-                ttk.Label(totalFrame, text="Delivery Fee: $10.00",
-                          font=('Helvetica', 10)).pack(pady=2)
-                ttk.Label(totalFrame, text=f"Total: ${subtotal + 10:.2f}",
-                          font=('Helvetica', 10, 'bold')).pack(pady=2)
-            else:
-                ttk.Label(totalFrame, text=f"Total: ${subtotal:.2f}",
-                          font=('Helvetica', 10, 'bold')).pack(pady=2)
-
-        # Buttons
-        buttonFrame = ttk.Frame(summaryWindow)
-        buttonFrame.pack(fill=tk.X, padx=10, pady=10)
-
-        ttk.Button(buttonFrame, text="Continue Shopping",
-                   command=summaryWindow.destroy).pack(side=tk.LEFT, padx=5)
 
     def viewFullCart(self):
         """Show full cart details"""
@@ -710,7 +624,7 @@ class CustomerCurrentOrdersTab(ttk.Frame):
         self.customer = customer
 
         # Update columns to include Remaining Payment
-        columns = ('Order No', 'Date', 'Status', 'Total', 'Need to Pay', 'Delivery')  # Added 'Remaining'
+        columns = ('Order No', 'Date', 'Status', 'Total', 'Need to Pay', 'Delivery')
         self.orderTree = ttk.Treeview(self, columns=columns, show='headings')
 
         # Setup column headings
@@ -778,13 +692,13 @@ class CustomerCurrentOrdersTab(ttk.Frame):
             ).all()
 
             for order in orders:
-                remaining_payment = order.calcRemainingBalance()  # Calculate remaining payment
+                remaining_payment = order.calcRemainingBalance()
                 self.orderTree.insert('', 'end', values=(
                     order.orderNumber,
                     order.orderDate.strftime('%Y-%m-%d'),
                     order.orderStatus,
                     f"${order.total:.2f}",
-                    f"${remaining_payment:.2f}",  # Add remaining payment
+                    f"${remaining_payment:.2f}",
                     "Yes" if order.deliveryMethod == DeliveryMethod.DELIVERY else "No"
                 ))
 
@@ -896,7 +810,7 @@ class CustomerCurrentOrdersTab(ttk.Frame):
                 if success:
                     session.commit()
                     messagebox.showinfo("Success", message)
-                    self.loadOrders()  # Refresh the order list
+                    self.loadOrders()
                 else:
                     messagebox.showerror("Error", message)
 
