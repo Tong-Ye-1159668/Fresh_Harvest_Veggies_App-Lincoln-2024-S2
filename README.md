@@ -1,38 +1,60 @@
-# Fresh Harvets Veggies
+# Fresh Harvest Veggies
 ## Tong Ye 1159668
-### Step to run the app
 
-1. requirement: sqlAlchemy
-2. local data base: fhvdb
-3. run the main.py in root directory
+### System Requirements
 
-#### Private Customer login
-username1,userpass
+1. Python 3.x
+2. SQLAlchemy
+3. MySQL Server
+4. MySQL Connector/Python (`mysql-connector-python`)
+5. pytest (for testing)
 
-username2,userpass
+### Setup Instructions
 
-username3,userpass
+1. Install required packages:
+   ```bash
+   pip install sqlalchemy mysql-connector-python pytest
+   ```
 
-username4,userpass
+2. Set up local MySQL database:
+   - Create a database named `fhvdb`
+   - Configure MySQL credentials in `main.py`
+   - engine = create_engine('mysql+mysqldb://root:YourPassword@localhost:3306/fhvdb')
 
-username5,userpass
+3. Run the application:
+   ```bash
+   python main.py
+   ```
 
-username6,userpass
+### Testing
 
-username7,userpass
+The project uses pytest for unit testing and integration testing. To run tests:
 
-username8,userpass
+Test files are organized in the `tests/` directory.
 
-#### Corporate Customer login
-cusername1,userpass
 
-cusername2,userpass
+#### Private Customer Accounts
+| Username  | Password  |
+|-----------|-----------|
+| username1 | userpass  |
+| username2 | userpass  |
+| username3 | userpass  |
+| username4 | userpass  |
+| username5 | userpass  |
+| username6 | userpass  |
+| username7 | userpass  |
+| username8 | userpass  |
 
-cusername3,userpass
+#### Corporate Customer Accounts
+| Username   | Password  |
+|------------|-----------|
+| cusername1 | userpass  |
+| cusername2 | userpass  |
+| cusername3 | userpass  |
 
-#### Staff login
-staffuser1,staffpass
-
-staffuser2,staffpass
-
-staffuser3,staffpass
+#### Staff Accounts
+| Username   | Password   |
+|------------|------------|
+| staffuser1 | staffpass  |
+| staffuser2 | staffpass  |
+| staffuser3 | staffpass  |
