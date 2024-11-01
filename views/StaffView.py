@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from .Sidebar import Sidebar
-from .StaffTabs import StaffOrdersTab, StaffCustomersTab, StaffReportsTab
+from .StaffTabs import StaffOrdersTab, StaffCustomersTab, StaffReportsTab, StaffInventoryTab  # Add this
 
 
 class StaffView(tk.Frame):
@@ -28,7 +28,8 @@ class StaffView(tk.Frame):
         self.frames = {
             'orders': StaffOrdersTab(self.mainContainer, self.engine),
             'customers': StaffCustomersTab(self.mainContainer, self.engine),
-            'reports': StaffReportsTab(self.mainContainer, self.engine)
+            'reports': StaffReportsTab(self.mainContainer, self.engine),
+            'inventory': StaffInventoryTab(self.mainContainer, self.engine)  # Add this
         }
 
         # Setup navigation
@@ -42,6 +43,7 @@ class StaffView(tk.Frame):
         self.sidebar.addCommand("Manage Orders", lambda: self.showFrame('orders'))
         self.sidebar.addCommand("Manage Customers", lambda: self.showFrame('customers'))
         self.sidebar.addCommand("Generate Reports", lambda: self.showFrame('reports'))
+        self.sidebar.addCommand("View Inventory", lambda: self.showFrame('inventory'))  # Add this
         self.sidebar.addCommand("Logout", self.parent.destroy)
 
     def showFrame(self, frameName):
@@ -60,3 +62,5 @@ class StaffView(tk.Frame):
             self.frames[frameName].loadOrders()
         elif hasattr(self.frames[frameName], 'loadCustomers'):
             self.frames[frameName].loadCustomers()
+        elif hasattr(self.frames[frameName], 'loadItems'):  # Add this
+            self.frames[frameName].loadItems()

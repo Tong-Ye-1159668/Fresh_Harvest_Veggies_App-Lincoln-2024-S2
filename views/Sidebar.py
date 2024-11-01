@@ -22,7 +22,7 @@ class Sidebar:
         self.sidebar.place(relx=0, rely=0, relwidth=0.15, relheight=1)
 
         # Find the root Tk window
-        self.master_window = self._get_master_window(root)
+        self.master_window = self._getMasterWindow(root)
 
         # Logo/Brand area
         self.setupBrandArea()
@@ -33,7 +33,7 @@ class Sidebar:
         # Logout button at bottom
         self.setupLogoutButton()
 
-    def _get_master_window(self, widget):
+    def _getMasterWindow(self, widget):
         """Get the root Tk window"""
         parent = widget.master
         while parent is not None:
@@ -103,10 +103,11 @@ class Sidebar:
     def setupStaffMenu(self, menuFrame):
         """Setup staff menu items"""
         menuItems = [
-            ("Manage Orders", None, True),
+            ("Manage Orders", None, False),
             ("Manage Customers", None, False),
+            ("View Inventory", None, False),
             ("Generate Reports", None, False)
-        ]  # Removed Logout from here
+        ]
 
         for text, cmd, highlight in menuItems:
             self.createMenuButton(menuFrame, text, cmd, highlight)

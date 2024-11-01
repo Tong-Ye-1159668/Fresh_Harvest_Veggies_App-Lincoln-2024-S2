@@ -5,7 +5,7 @@ from tkinter import ttk, messagebox
 from sqlalchemy import func, desc
 from sqlalchemy.orm import Session
 
-from models import Order, Customer, Item, OrderLine
+from models import Order, Customer, Item, OrderLine, UnitPriceVeggie, PackVeggie, WeightedVeggie, PremadeBox
 from models.Order import OrderStatus, DeliveryMethod
 from .OrderStatusDialog import OrderStatusDialog
 
@@ -632,3 +632,152 @@ class StaffReportsTab(ttk.Frame):
 
             ttk.Button(reportWindow, text="Export Report",
                        command=lambda: self.exportReport(reportText.get('1.0', tk.END))).pack(pady=5)
+
+
+class StaffInventoryTab(ttk.Frame):
+    def __init__(self, parent, engine):
+        super().__init__(parent)
+        self.engine = engine
+
+        # Create filter frame
+        filterFrame = ttk.LabelFrame(self, text="Filter Items")
+        filterFrame.pack(fill=tk.X, padx=5, pady=5)
+
+        # Item type filter
+        ttk.Label(filterFrame, text="Type:").pack(side=tk.LEFT, padx=5)
+        self.typeVar = tk.StringVar(value="ALL")
+        typeCombo = ttk.Combobox(filterFrame, textvariable=self.typeVar,
+                                 values=["ALL", "Unit Price Veggies", "Pack Veggies",
+                                         "Weighted Veggies", "Premade Boxes"])
+        typeCombo.pack(side=tk.LEFT, padx=5)
+
+        ttk.Button(filterFrame, text="Apply Filter",
+                   command=self.loadItems).pack(side=tk.LEFT, padx=5)
+
+        # Create items treeview
+        columns = ('Name', 'Type', 'Price', 'Stock Info')
+        self.itemTree = ttk.Treeview(self, columns=columns, show='headings')
+
+        for col in columns:
+            self.itemTree.heading(col, text=col)
+            if col == 'Stock Info':
+                self.itemTree.column(col, width=200)
+            else:
+                self.itemTree.column(col, width=100)
+
+        self.itemTree.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        # Add scrollbar
+        scrollbar = ttk.Scrollbar(self, orient=tk.VERTICAL, command=self.itemTree.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.itemTree.configure(yscrollcommand=scrollbar.set)
+
+        # Add view details button
+        ttk.Button(self, text="View Details",
+                   command=self.viewItemDetails).pack(pady=5)
+
+        # Load initial data
+        self.loadItems()
+
+    def loadItems(self):
+        """Load items into treeview"""
+        from models import UnitPriceVeggie, PackVeggie, WeightedVeggie, PremadeBox, Item
+
+        for item in self.itemTree.get_children():
+            self.itemTree.delete(item)
+
+        with Session(self.engine) as session:
+            items = []
+
+            if self.typeVar.get() == "Unit Price Veggies":
+                items = session.query(UnitPriceVeggie).all()
+            elif self.typeVar.get() == "Pack Veggies":
+                items = session.query(PackVeggie).all()
+            elif self.typeVar.get() == "Weighted Veggies":
+                items = session.query(WeightedVeggie).all()
+            elif self.typeVar.get() == "Premade Boxes":
+                items = session.query(PremadeBox).all()
+            else:  # ALL
+                # Query each type separately and combine results
+                unit_price = session.query(UnitPriceVeggie).all()
+                pack_veggies = session.query(PackVeggie).all()
+                weighted_veggies = session.query(WeightedVeggie).all()
+                premade_boxes = session.query(PremadeBox).all()
+                items = unit_price + pack_veggies + weighted_veggies + premade_boxes
+
+            for item in items:
+                if isinstance(item, UnitPriceVeggie):
+                    self.itemTree.insert('', 'end', values=(
+                        item.vegName,
+                        'Unit Price',
+                        f"${item.pricePerUnit:.2f}/unit",
+                        f"Quantity: {item.quantity}"
+                    ))
+                elif isinstance(item, PackVeggie):
+                    self.itemTree.insert('', 'end', values=(
+                        item.vegName,
+                        'Pack',
+                        f"${item.pricePerPack:.2f}/pack",
+                        f"Packs available: {item.numberOfPacks}"
+                    ))
+                elif isinstance(item, WeightedVeggie):
+                    self.itemTree.insert('', 'end', values=(
+                        item.vegName,
+                        'Weighted',
+                        f"${item.pricePerKilo:.2f}/kg",
+                        f"Weight available: {item.weight:.2f}kg"
+                    ))
+                elif isinstance(item, PremadeBox):
+                    self.itemTree.insert('', 'end', values=(
+                        f"Box {item.boxSize}",
+                        'Premade Box',
+                        PremadeBox.getBoxPrice(item.boxSize),
+                        f"Boxes available: {item.numbOfBoxes}"
+                    ))
+
+    def viewItemDetails(self):
+        """Show detailed item information"""
+        selected = self.itemTree.selection()
+        if not selected:
+            messagebox.showwarning("Warning", "Please select an item to view")
+            return
+
+        item_name = self.itemTree.item(selected[0])['values'][0]
+        item_type = self.itemTree.item(selected[0])['values'][1]
+
+        detailsWindow = tk.Toplevel(self)
+        detailsWindow.title(f"Item Details - {item_name}")
+        detailsWindow.geometry("400x300")
+
+        with Session(self.engine) as session:
+            if item_type == 'Unit Price':
+                item = session.query(UnitPriceVeggie).filter_by(vegName=item_name).first()
+                ttk.Label(detailsWindow, text=f"Name: {item.vegName}").pack(pady=5)
+                ttk.Label(detailsWindow, text=f"Price per Unit: ${item.pricePerUnit:.2f}").pack(pady=5)
+                ttk.Label(detailsWindow, text=f"Available Quantity: {item.quantity}").pack(pady=5)
+
+            elif item_type == 'Pack':
+                item = session.query(PackVeggie).filter_by(vegName=item_name).first()
+                ttk.Label(detailsWindow, text=f"Name: {item.vegName}").pack(pady=5)
+                ttk.Label(detailsWindow, text=f"Price per Pack: ${item.pricePerPack:.2f}").pack(pady=5)
+                ttk.Label(detailsWindow, text=f"Number of Packs: {item.numberOfPacks}").pack(pady=5)
+
+            elif item_type == 'Weighted':
+                item = session.query(WeightedVeggie).filter_by(vegName=item_name).first()
+                ttk.Label(detailsWindow, text=f"Name: {item.vegName}").pack(pady=5)
+                ttk.Label(detailsWindow, text=f"Price per Kilo: ${item.pricePerKilo:.2f}").pack(pady=5)
+                ttk.Label(detailsWindow, text=f"Available Weight: {item.weight:.2f}kg").pack(pady=5)
+
+            elif item_type == 'Premade Box':
+                box_size = item_name.split()[-1]  # Get size from "Box S/M/L"
+                item = session.query(PremadeBox).filter_by(boxSize=box_size).first()
+                ttk.Label(detailsWindow, text=f"Box Size: {item.boxSize}").pack(pady=5)
+                ttk.Label(detailsWindow, text=f"Price: {PremadeBox.getBoxPrice(item.boxSize)}").pack(pady=5)
+                ttk.Label(detailsWindow, text=f"Number of Boxes: {item.numbOfBoxes}").pack(pady=5)
+                ttk.Label(detailsWindow, text=f"Max Veggies: {PremadeBox.getMaxVeggies(item.boxSize)}").pack(pady=5)
+
+                # Show veggies in box
+                if item.veggies:
+                    ttk.Label(detailsWindow, text="\nVegetables Included:").pack(pady=5)
+                    for veggie in item.veggies:
+                        ttk.Label(detailsWindow, text=f"- {veggie.vegName}").pack(pady=2)
