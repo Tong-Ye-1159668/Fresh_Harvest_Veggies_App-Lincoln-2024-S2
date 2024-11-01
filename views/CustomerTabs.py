@@ -267,17 +267,16 @@ class CustomerOrderTab(ttk.Frame):
             return
 
         item_data = self.itemTree.item(selected[0])['values']
-        quantity = self.quantity.get()
 
-        # Check if it's a premade box
+        # Check if it's a premade box before entering session context
         if "Premade Box" in item_data[0]:
             self.handleCustomBox(item_data)
             return
 
         try:
+            # Validate quantity before database operations
             if item_data[1] == 'Weight':  # For weighted veggies
                 quantity = float(self.quantity.get())
-                # Check minimum weight
                 if quantity < 0.01:
                     messagebox.showerror("Error", "Minimum weight must be 0.01 kg")
                     return
@@ -287,41 +286,70 @@ class CustomerOrderTab(ttk.Frame):
                     messagebox.showerror("Error", "Quantity must be greater than 0")
                     return
 
-        except ValueError:
-            messagebox.showerror("Error", "Please enter a valid quantity")
-            return
+            # Start database session
+            with Session(self.engine) as session:
+                # Refresh customer object within session
+                self.customer = session.merge(self.customer)
 
-        try:
-            # Extract price from price string
-            price_str = item_data[2]  # e.g., "$7.99/kg" or "$5.00/pack" or "$3.00/unit"
+                # Extract price from price string
+                price_str = item_data[2]  # e.g., "$7.99/kg" or "$5.00/pack" or "$3.00/unit"
+                price_parts = price_str.replace('$', '').split('/')
+                base_price = float(price_parts[0])
 
-            # Remove $ and split by /
-            price_parts = price_str.replace('$', '').split('/')
-            base_price = float(price_parts[0])
+                # Calculate total price based on item type
+                if item_data[1] == 'Weight':
+                    total_price = base_price * quantity
+                    quantity_display = f"{quantity:.2f}"  # Format weight to 2 decimal places
+                else:
+                    total_price = base_price * quantity
+                    quantity_display = str(quantity)
 
-            # Calculate total price based on item type
-            if item_data[1] == 'Weight':
-                # For weighted items, quantity is in kg
-                total_price = base_price * quantity
-                # Format quantity to 2 decimal places for display
-                quantity = f"{quantity:.2f}"
-            else:
-                # For other items (pack, unit), simple multiplication
-                total_price = base_price * quantity
+                # Query the actual item from database
+                if item_data[1] == 'Weight':
+                    item = session.query(WeightedVeggie).filter_by(vegName=item_data[0]).first()
+                    if not item or item.weight < quantity:
+                        raise ValueError(f"Insufficient stock for {item_data[0]}")
+                elif item_data[1] == 'Pack':
+                    item = session.query(PackVeggie).filter_by(vegName=item_data[0]).first()
+                    if not item or item.numberOfPacks < quantity:
+                        raise ValueError(f"Insufficient stock for {item_data[0]}")
+                elif item_data[1] == 'Unit':
+                    item = session.query(UnitPriceVeggie).filter_by(vegName=item_data[0]).first()
+                    if not item or item.quantity < quantity:
+                        raise ValueError(f"Insufficient stock for {item_data[0]}")
+                else:
+                    raise ValueError(f"Unknown item type: {item_data[1]}")
 
-            # Add to cart tree
-            self.cartTree.insert('', 'end', values=(
-                item_data[0],  # Name
-                quantity,  # Quantity (formatted for weight)
-                f"${total_price:.2f}"  # Total price
-            ))
+                # Add to cart tree (do this before committing to ensure no database errors)
+                self.cartTree.insert('', 'end', values=(
+                    item_data[0],  # Name
+                    quantity_display,  # Quantity (formatted)
+                    f"${total_price:.2f}"  # Total price
+                ))
 
-            self.updateTotal()
+                # Update stock in database
+                if isinstance(item, WeightedVeggie):
+                    item.weight -= quantity
+                elif isinstance(item, PackVeggie):
+                    item.numberOfPacks -= quantity
+                elif isinstance(item, UnitPriceVeggie):
+                    item.quantity -= quantity
+
+                # Commit the transaction
+                session.commit()
+
+                # Update cart total
+                self.updateTotal()
 
         except ValueError as e:
-            messagebox.showerror("Error", f"Invalid price format: {price_str}")
+            messagebox.showerror("Error", str(e))
         except Exception as e:
             messagebox.showerror("Error", f"Error adding item to cart: {str(e)}")
+            if 'session' in locals():
+                session.rollback()
+
+        # Reset quantity spinbox to default
+        self.quantity.set("1")
 
     def removeFromCart(self):
         """Remove selected item from cart"""
@@ -367,12 +395,12 @@ class CustomerOrderTab(ttk.Frame):
             cartSummaryTree.heading(col, text=col)
 
         # Add all items from cart
-        cart_total = 0
+        subtotal = 0
         for item in self.cartTree.get_children():
             values = self.cartTree.item(item)['values']
             cartSummaryTree.insert('', 'end', values=values)
             # Add to total (remove $ and convert to float)
-            cart_total += float(values[2].replace('$', ''))
+            subtotal += float(values[2].replace('$', ''))
 
         cartSummaryTree.pack(fill=tk.BOTH, expand=True, pady=5)
 
@@ -381,18 +409,36 @@ class CustomerOrderTab(ttk.Frame):
         totalFrame.pack(fill=tk.X, padx=10, pady=5)
 
         # Show subtotal
-        ttk.Label(totalFrame, text=f"Subtotal: ${cart_total:.2f}",
+        ttk.Label(totalFrame, text=f"Subtotal: ${subtotal:.2f}",
                   font=('Helvetica', 10)).pack(pady=2)
 
-        # Show delivery fee if applicable
-        if self.deliveryMethod.get() == "DELIVERY":
-            ttk.Label(totalFrame, text="Delivery Fee: $10.00",
+        # Show discount for corporate customers
+        if self.customer.type == "Corporate Customer":
+            discount_amount = subtotal * self.customer.discountRate
+            ttk.Label(totalFrame,
+                      text=f"Discount ({self.customer.discountRate * 100}%): -${discount_amount:.2f}",
                       font=('Helvetica', 10)).pack(pady=2)
-            ttk.Label(totalFrame, text=f"Total: ${cart_total + 10:.2f}",
-                      font=('Helvetica', 10, 'bold')).pack(pady=2)
+
+            if self.deliveryMethod.get() == "DELIVERY":
+                ttk.Label(totalFrame, text="Delivery Fee: $10.00",
+                          font=('Helvetica', 10)).pack(pady=2)
+                ttk.Label(totalFrame,
+                          text=f"Total (after discount): ${(subtotal - discount_amount + 10):.2f}",
+                          font=('Helvetica', 10, 'bold')).pack(pady=2)
+            else:
+                ttk.Label(totalFrame,
+                          text=f"Total (after discount): ${(subtotal - discount_amount):.2f}",
+                          font=('Helvetica', 10, 'bold')).pack(pady=2)
         else:
-            ttk.Label(totalFrame, text=f"Total: ${cart_total:.2f}",
-                      font=('Helvetica', 10, 'bold')).pack(pady=2)
+            # Regular customer display
+            if self.deliveryMethod.get() == "DELIVERY":
+                ttk.Label(totalFrame, text="Delivery Fee: $10.00",
+                          font=('Helvetica', 10)).pack(pady=2)
+                ttk.Label(totalFrame, text=f"Total: ${subtotal + 10:.2f}",
+                          font=('Helvetica', 10, 'bold')).pack(pady=2)
+            else:
+                ttk.Label(totalFrame, text=f"Total: ${subtotal:.2f}",
+                          font=('Helvetica', 10, 'bold')).pack(pady=2)
 
         # Buttons
         buttonFrame = ttk.Frame(summaryWindow)
@@ -400,8 +446,6 @@ class CustomerOrderTab(ttk.Frame):
 
         ttk.Button(buttonFrame, text="Continue Shopping",
                    command=summaryWindow.destroy).pack(side=tk.LEFT, padx=5)
-        ttk.Button(buttonFrame, text="Proceed to Checkout",
-                   command=lambda: [summaryWindow.destroy(), self.submitOrder()]).pack(side=tk.LEFT, padx=5)
 
     def viewFullCart(self):
         """Show full cart details"""
@@ -494,9 +538,19 @@ class CustomerOrderTab(ttk.Frame):
         delivery_fee = 10.0 if self.deliveryMethod.get() == "DELIVERY" else 0.0
         self.deliveryFeeLabel.config(text=f"Delivery Fee: ${delivery_fee:.2f}")
 
-        # Calculate total
-        total = subtotal + delivery_fee
-        self.totalLabel.config(text=f"Total: ${total:.2f}")
+        # Apply discount for corporate customers
+        if self.customer.type == "Corporate Customer":
+            discount_amount = subtotal * self.customer.discountRate
+            discount_label = ttk.Label(self,
+                                       text=f"Discount ({self.customer.discountRate * 100}%): -${discount_amount:.2f}")
+
+            # Calculate total with discount
+            total = (subtotal - discount_amount) + delivery_fee
+            self.totalLabel.config(text=f"Total (after discount): ${total:.2f}")
+        else:
+            # Regular customer - no discount
+            total = subtotal + delivery_fee
+            self.totalLabel.config(text=f"Total: ${total:.2f}")
 
     def submitOrder(self):
         """Submit and process the order"""
@@ -509,14 +563,51 @@ class CustomerOrderTab(ttk.Frame):
 
         try:
             with Session(self.engine) as session:
-                # Calculate total order amount
+                # Get fresh customer data
+                customer = session.query(Customer).get(self.customer.id)
+
+                # Calculate order amount (before discount)
                 total_amount = float(self.totalLabel.cget("text").split('$')[1])
 
-                # Check if order would exceed maxOwing
-                customer = session.query(Customer).get(self.customer.id)
-                if customer.custBalance - total_amount < -customer.maxOwing:
-                    messagebox.showerror("Error",
-                                         "This order would exceed your maximum owing limit.")
+                # Apply discount for corporate customers
+                if customer.type == "Corporate Customer":
+                    # Apply the discount to the total amount
+                    discounted_amount = total_amount * (1 - customer.discountRate)
+                else:
+                    discounted_amount = total_amount
+
+                # Calculate total need-to-pay amount from PENDING orders
+                pending_orders = session.query(Order).filter(
+                    Order.orderCustomer == customer.id,
+                    Order.orderStatus == OrderStatus.PENDING.value
+                ).all()
+
+                total_need_to_pay = sum(order.calcRemainingBalance() for order in pending_orders)
+                potential_need_to_pay = total_need_to_pay + discounted_amount
+
+                # Check against appropriate limit based on customer type
+                if customer.type == "Corporate Customer":
+                    limit = customer.maxCredit
+                    limit_name = "credit limit"
+                else:
+                    limit = customer.maxOwing
+                    limit_name = "maximum owing limit"
+
+                if potential_need_to_pay > limit:
+                    # Show different messages based on customer type
+                    if customer.type == "Corporate Customer":
+                        messagebox.showerror("Error",
+                                             f"Cannot place order: Total need-to-pay amount (${potential_need_to_pay:.2f}) "
+                                             f"would exceed your {limit_name} (${limit:.2f})\n"
+                                             f"Current unpaid amount: ${total_need_to_pay:.2f}\n"
+                                             f"New order amount: ${total_amount:.2f}\n"
+                                             f"Discounted order amount: ${discounted_amount:.2f}")
+                    else:
+                        messagebox.showerror("Error",
+                                             f"Cannot place order: Total need-to-pay amount (${potential_need_to_pay:.2f}) "
+                                             f"would exceed your {limit_name} (${limit:.2f})\n"
+                                             f"Current unpaid amount: ${total_need_to_pay:.2f}\n"
+                                             f"New order amount: ${total_amount:.2f}")
                     return
 
                 # Create new order
@@ -1391,7 +1482,6 @@ class CustomerProfileTab(ttk.Frame):
         """Refresh profile information"""
         try:
             with Session(self.engine) as session:
-                # Get fresh customer data from database
                 customer = session.query(Customer).get(self.customer.id)
 
                 # Update the display
@@ -1406,15 +1496,17 @@ class CustomerProfileTab(ttk.Frame):
                     foreground=balance_color
                 )
 
-                self.maxOwingLabel.config(text=f"Maximum Owing: ${customer.maxOwing:.2f}")
-
-                # Update corporate customer specific information
-                if customer.type == "Corporate Customer":
+                # Hide maxOwing for corporate customers
+                if customer.type != "Corporate Customer":
+                    self.maxOwingLabel.config(text=f"Maximum Owing: ${customer.maxOwing:.2f}")
+                    self.maxOwingLabel.pack(pady=2)
+                else:
+                    self.maxOwingLabel.pack_forget()
+                    # Show corporate specific information
                     self.discountLabel.config(text=f"Discount Rate: {customer.discountRate * 100}%")
                     self.creditLimitLabel.config(text=f"Credit Limit: ${customer.maxCredit:.2f}")
                     self.minBalanceLabel.config(text=f"Minimum Balance: ${customer.minBalance:.2f}")
 
-                # Update the stored customer reference
                 self.customer = customer
 
         except Exception as e:
