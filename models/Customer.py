@@ -24,5 +24,7 @@ class Customer(Person):
         self.custBalance = custBalance
         self.maxOwing = maxOwing
 
-    def __repr__(self):
-        return f"Customer({self.firstName} {self.lastName}, Address: {self.custAddress}, Balance: {self.custBalance})"
+    def __str__(self):
+        person_str = super().__str__()
+        balance_str = f"${self.custBalance:.2f}" if self.custBalance >= 0 else f"-${abs(self.custBalance):.2f}"
+        return f"{person_str} | Balance: {balance_str} | Address: {self.custAddress}"

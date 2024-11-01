@@ -23,5 +23,5 @@ class Person(Base):
         self.username = username
         self.password = password
 
-    def __repr__(self):
-        return f"Person({self.firstName} {self.lastName})"
+    def __str__(self):
+        return f"{self.firstName} {self.lastName} (Username: {self.username})"

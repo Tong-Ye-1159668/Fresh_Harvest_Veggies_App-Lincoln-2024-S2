@@ -17,3 +17,7 @@ class UnitPriceVeggie(Veggie):
         super().__init__(vegName=vegName)
         self.quantity = quantity
         self.pricePerUnit = pricePerUnit
+
+    def __str__(self):
+        veggie_str = super().__str__()
+        return f"{veggie_str} | Storage: {self.quantity} units, Price: ${self.pricePerUnit:.2f}/unit"

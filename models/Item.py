@@ -13,3 +13,6 @@ class Item(Base):
         'polymorphic_identity': 'Item', # The base identity for this class
         'polymorphic_on': type          # SQLAlchemy uses 'type' to distinguish subclasses
     }
+
+    def __str__(self):
+        return f"Item #{self.id}"

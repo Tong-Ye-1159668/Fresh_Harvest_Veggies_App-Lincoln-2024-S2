@@ -145,3 +145,13 @@ class Order(Base):
         """Calculate remaining balance to be paid"""
         paidAmount = sum(payment.paymentAmount for payment in self.payments)
         return self.total - paidAmount
+
+    def __str__(self):
+        payment_info = f"Total: ${self.total:.2f}"
+        if self.discount > 0:
+            payment_info = f"Subtotal: ${self.subtotal:.2f} | Discount: ${self.discount:.2f} | " + payment_info
+        if self.deliveryFee > 0:
+            payment_info += f" | Delivery Fee: ${self.deliveryFee:.2f}"
+
+        return (f"Order #{self.orderNumber} | Date: {self.orderDate} | "
+                f"Status: {self.orderStatus} | {self.deliveryMethod.value} | {payment_info}")

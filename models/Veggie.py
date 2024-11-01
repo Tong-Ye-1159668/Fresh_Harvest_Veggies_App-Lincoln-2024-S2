@@ -16,3 +16,7 @@ class Veggie(Item):
     def __init__(self, vegName):
         super().__init__()
         self.vegName = vegName
+
+    def __str__(self):
+        item_str = super().__str__()
+        return f"{item_str} - {self.vegName}"

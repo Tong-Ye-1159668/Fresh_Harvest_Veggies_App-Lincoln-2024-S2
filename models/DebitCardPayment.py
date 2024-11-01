@@ -16,3 +16,7 @@ class DebitCardPayment(Payment):
         super().__init__(paymentAmount=paymentAmount, paymentDate=paymentDate)
         self.bankName = bankName
         self.debitCardNumber = debitCardNumber
+
+    def __str__(self):
+        payment_str = super().__str__()
+        return f"{payment_str} | {self.bankName} Debit Card Number: {self.debitCardNumber}"

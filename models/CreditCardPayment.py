@@ -18,3 +18,7 @@ class CreditCardPayment(Payment):
         self.cardExpiryDate = cardExpiryDate
         self.cardNumber = cardNumber
         self.cardType = cardType
+
+    def __str__(self):
+        payment_str = super().__str__()
+        return f"{payment_str} | {self.cardType} Card Number: {self.cardNumber} | Expires: {self.cardExpiryDate}"

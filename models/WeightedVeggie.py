@@ -16,3 +16,7 @@ class WeightedVeggie(Veggie):
         super().__init__(vegName=vegName)
         self.weight = weight
         self.pricePerKilo = pricePerKilo
+
+    def __str__(self):
+        veggie_str = super().__str__()
+        return f"{veggie_str} | Storage: {self.weight:.2f}kg, Price: ${self.pricePerKilo:.2f}/kg"

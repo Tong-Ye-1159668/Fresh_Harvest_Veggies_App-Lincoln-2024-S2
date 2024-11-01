@@ -25,6 +25,9 @@ class Payment(Base):
         self.paymentAmount = paymentAmount
         self.paymentDate = paymentDate
 
+    def __str__(self):
+        return f"Payment of ${self.paymentAmount:.2f} on {self.paymentDate}"
+
     def processPayment(self):
         """Process the payment and update customer balance"""
         if self.validatePayment():

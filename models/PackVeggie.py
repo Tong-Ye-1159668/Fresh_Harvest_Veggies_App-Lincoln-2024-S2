@@ -16,3 +16,7 @@ class PackVeggie(Veggie):
         super().__init__(vegName=vegName)
         self.numberOfPacks = numberOfPacks
         self.pricePerPack = pricePerPack
+
+    def __str__(self):
+        veggie_str = super().__str__()
+        return f"{veggie_str} | Storage: {self.numberOfPacks} packs, Price: ${self.pricePerPack:.2f}/pack"

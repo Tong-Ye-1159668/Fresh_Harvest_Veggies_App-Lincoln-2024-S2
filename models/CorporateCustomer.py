@@ -20,3 +20,8 @@ class CorporateCustomer(Customer):
         self.discountRate = discountRate
         self.maxCredit = maxCredit
         self.minBalance = minBalance
+
+    def __str__(self):
+        customer_str = super().__str__()
+        corp_info = f"Discount Rate: {self.discountRate*100}% | Max Credit: ${self.maxCredit:.2f} | Min Balance: ${self.minBalance:.2f}"
+        return f"{customer_str} | {corp_info}"

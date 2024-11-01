@@ -61,3 +61,6 @@ class OrderLine(Base):
         elif isinstance(self.item, UnitPriceVeggie):
             return f"{self.item.vegName} (Unit) x {self.itemNumber}"
         return "Unknown Item"
+
+    def __str__(self):
+        return f"Line Item: {self.getItemDetails()} | Total: ${self.lineTotal:.2f}"
