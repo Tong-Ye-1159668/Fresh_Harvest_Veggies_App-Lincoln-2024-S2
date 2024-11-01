@@ -16,8 +16,8 @@ def test_order_creation():
     assert order.orderStatus == OrderStatus.PENDING.value
     assert order.deliveryMethod == DeliveryMethod.PICKUP
     # Initialize values that are None by default
-    assert order.total is None  # Changed from 0.0 to None
-    assert order.subtotal is None  # These will be set when calcTotalPrice is called
+    assert order.total is None
+    assert order.subtotal is None
     assert order.discount is None
     assert order.deliveryFee is None
 
@@ -31,13 +31,13 @@ def test_order_delivery():
     assert order.deliveryMethod == DeliveryMethod.DELIVERY
 
     # Initialize the required values before calculation
-    order.subtotal = 0  # Set initial subtotal
-    order.discount = 0  # Set initial discount
-    order.deliveryFee = 0  # Set initial delivery fee
+    order.subtotal = 0
+    order.discount = 0
+    order.deliveryFee = 0
 
     order.calcTotalPrice()
-    assert order.deliveryFee == 10.0  # Check default delivery fee
-    assert order.total == 10.0  # Total should be just delivery fee when subtotal is 0
+    assert order.deliveryFee == 10.0
+    assert order.total == 10.0
 
 
 @pytest.mark.parametrize("current_status, can_cancel", [
@@ -90,7 +90,7 @@ def test_calc_total_price_with_delivery():
         deliveryMethod=DeliveryMethod.DELIVERY
     )
     # Initialize required values
-    order.subtotal = 100  # Set some subtotal
+    order.subtotal = 100
     order.discount = 0
     order.deliveryFee = 0
 
