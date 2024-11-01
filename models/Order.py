@@ -50,7 +50,12 @@ class Order(Base):
 
     def calcTotalPrice(self):
         """Calculate order total including delivery fee and discounts"""
-        self.subtotal = sum(line.calcLineTotal() for line in self.orderLines)
+        # Only calculate subtotal from orderLines if it hasn't been manually set
+        if self.subtotal is None or self.subtotal == 0.0:
+            self.subtotal = sum(line.calcLineTotal() for line in self.orderLines)
+
+        # Initialize discount
+        self.discount = 0.0
 
         # Apply corporate customer discount if applicable
         if hasattr(self.customer, 'discountRate'):
@@ -60,7 +65,8 @@ class Order(Base):
         if self.deliveryMethod == DeliveryMethod.DELIVERY:
             self.deliveryFee = 10.0  # $10 delivery fee
 
-        self.total = self.subtotal - self.discount + self.deliveryFee
+        # Calculate total using the existing values
+        self.total = self.subtotal - (self.discount or 0.0) + (self.deliveryFee or 0.0)
         return self.total
 
     def ifCanCancel(self):
