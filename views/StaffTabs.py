@@ -246,6 +246,10 @@ class StaffOrdersTab(ttk.Frame):
                         messagebox.showerror("Error", "Completed order status cannot be changed")
                         return
 
+                    elif current_status == OrderStatus.CANCELLED.value:
+                        messagebox.showerror("Error", "Cancelled order status cannot be changed")
+                        return
+
                     order.orderStatus = new_status
                     session.commit()
                     self.loadOrders()
