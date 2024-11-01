@@ -449,9 +449,6 @@ class StaffReportsTab(ttk.Frame):
             # Make text readonly
             reportText.configure(state='disabled')
 
-            # Add export button
-            ttk.Button(reportWindow, text="Export Report",
-                       command=lambda: self.exportReport(reportText.get('1.0', tk.END))).pack(pady=5)
 
     def generateSalesReport(self, period):
         """Generate sales report for specified period"""
@@ -497,10 +494,6 @@ class StaffReportsTab(ttk.Frame):
             # Make text readonly
             reportText.configure(state='disabled')
 
-            # Add export button
-            ttk.Button(reportWindow, text="Export Report",
-                       command=lambda: self.exportReport(reportText.get('1.0', tk.END))).pack(pady=5)
-
     def generatePopularItemsReport(self):
         """Generate report of popular items"""
         reportWindow = tk.Toplevel(self)
@@ -536,8 +529,6 @@ class StaffReportsTab(ttk.Frame):
 
             reportText.configure(state='disabled')
 
-            ttk.Button(reportWindow, text="Export Report",
-                       command=lambda: self.exportReport(reportText.get('1.0', tk.END))).pack(pady=5)
 
     def generateUnpopularItemsReport(self):
         """Generate report of unpopular items"""
@@ -573,9 +564,6 @@ class StaffReportsTab(ttk.Frame):
 
             reportText.configure(state='disabled')
 
-            ttk.Button(reportWindow, text="Export Report",
-                       command=lambda: self.exportReport(reportText.get('1.0', tk.END))).pack(pady=5)
-
     def generatePrivateCustomersList(self):
         """Generate list of private customers"""
         reportWindow = tk.Toplevel(self)
@@ -608,8 +596,6 @@ class StaffReportsTab(ttk.Frame):
 
             reportText.configure(state='disabled')
 
-            ttk.Button(reportWindow, text="Export Report",
-                       command=lambda: self.exportReport(reportText.get('1.0', tk.END))).pack(pady=5)
 
     def generateCorporateCustomersList(self):
         """Generate list of corporate customers"""
@@ -645,9 +631,6 @@ class StaffReportsTab(ttk.Frame):
                 reportText.insert(tk.END, "\n")
 
             reportText.configure(state='disabled')
-
-            ttk.Button(reportWindow, text="Export Report",
-                       command=lambda: self.exportReport(reportText.get('1.0', tk.END))).pack(pady=5)
 
 
 class StaffInventoryTab(ttk.Frame):
