@@ -114,17 +114,28 @@ class StaffOrdersTab(ttk.Frame):
             itemsFrame = ttk.LabelFrame(detailsWindow, text="Order Items")
             itemsFrame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
-            columns = ('Item', 'Quantity', 'Price', 'Total')
+            columns = ('Item', 'Quantity', 'Unit Price', 'Total')  # Changed 'Price' to 'Unit Price' for clarity
             itemTree = ttk.Treeview(itemsFrame, columns=columns, show='headings')
 
             for col in columns:
                 itemTree.heading(col, text=col)
+                itemTree.column(col, width=100)  # Set consistent column widths
 
             for line in order.orderLines:
+                # Get the appropriate price per unit based on item type
+                if hasattr(line.item, 'pricePerUnit'):
+                    unit_price = line.item.pricePerUnit
+                elif hasattr(line.item, 'pricePerPack'):
+                    unit_price = line.item.pricePerPack
+                elif hasattr(line.item, 'pricePerKilo'):
+                    unit_price = line.item.pricePerKilo
+                else:
+                    unit_price = line.lineTotal / line.itemNumber if line.itemNumber else 0
+
                 itemTree.insert('', 'end', values=(
                     line.getItemDetails(),
                     line.itemNumber,
-                    f"${line.item.pricePerUnit if hasattr(line.item, 'pricePerUnit') else ''}",
+                    f"${unit_price:.2f}",
                     f"${line.lineTotal:.2f}"
                 ))
 
@@ -133,20 +144,21 @@ class StaffOrdersTab(ttk.Frame):
             # Payment History
             self.addPaymentHistory(detailsWindow, order)
 
-            # Totals
-            totalsFrame = ttk.Frame(detailsWindow)
+            # Totals frame with proper formatting
+            totalsFrame = ttk.LabelFrame(detailsWindow, text="Order Totals")
             totalsFrame.pack(fill=tk.X, padx=10, pady=5)
 
-            ttk.Label(totalsFrame, text=f"Subtotal: ${order.subtotal:.2f}").pack()
+            ttk.Label(totalsFrame, text=f"Subtotal: ${order.subtotal:.2f}").pack(anchor='e')
             if order.discount > 0:
-                ttk.Label(totalsFrame, text=f"Discount: ${order.discount:.2f}").pack()
+                ttk.Label(totalsFrame, text=f"Discount: -${order.discount:.2f}").pack(anchor='e')
             if order.deliveryFee > 0:
-                ttk.Label(totalsFrame, text=f"Delivery Fee: ${order.deliveryFee:.2f}").pack()
-            ttk.Label(totalsFrame, text=f"Total: ${order.total:.2f}", font=('Helvetica', 10, 'bold')).pack()
+                ttk.Label(totalsFrame, text=f"Delivery Fee: ${order.deliveryFee:.2f}").pack(anchor='e')
+            ttk.Label(totalsFrame, text=f"Total: ${order.total:.2f}",
+                      font=('Helvetica', 10, 'bold')).pack(anchor='e')
 
             if order.calcRemainingBalance() > 0:
                 ttk.Label(totalsFrame, text=f"Remaining Balance: ${order.calcRemainingBalance():.2f}",
-                          foreground='red').pack()
+                          foreground='red').pack(anchor='e')
 
     def addPaymentHistory(self, window, order):
         """Add payment history section to order details"""
