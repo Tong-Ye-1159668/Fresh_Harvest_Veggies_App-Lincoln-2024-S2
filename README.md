@@ -4,7 +4,7 @@
 
 A comprehensive vegetable ordering and management system for Fresh Harvest Veggies as part of the COMP 642: Advanced Programming course during Semester 2 of my Master of Applied Computing studies at Lincoln University. This application demonstrates advanced Object-Oriented Programming principles while providing a practical solution for managing vegetable orders, premade boxes, and customer accounts.
 
-## Interface Screenshots
+## Interface
 
 Login Window
 
